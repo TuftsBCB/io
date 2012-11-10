@@ -9,8 +9,6 @@ import (
 	"path"
 	"strconv"
 	"strings"
-
-	"github.com/BurntSushi/bcbgo/apps/matt"
 )
 
 // AminoThreeToOne is a map from three letter amino acids to their
@@ -144,12 +142,6 @@ func (e *Entry) OneChain() *Chain {
 			e.Path, len(e.Chains)))
 	}
 	return e.Chains[0]
-}
-
-// PDBArg is a convenience method for creating a PDBArg that can be used in
-// the 'matt' package. It sets 'Location' in PDBArg to 'Path' from 'Entry'.
-func (e *Entry) PDBArg() matt.PDBArg {
-	return matt.PDBArg{Location: e.Path}
 }
 
 // Name returns the base name of the path of this PDB entry.
@@ -320,15 +312,6 @@ type Chain struct {
 	AtomResidueStart, AtomResidueEnd int
 	Atoms                            Atoms
 	CaAtoms                          Atoms
-}
-
-// PDBArg is a convenience method for creating a PDBArg for a specific
-// chain that can be used in the 'matt' package.
-func (c *Chain) PDBArg() matt.PDBArg {
-	return matt.PDBArg{
-		Location: c.Entry.Path,
-		Chain:    c.Ident,
-	}
 }
 
 // ValidProtein returns true when there are ATOM records corresponding to
