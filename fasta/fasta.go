@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"strings"
-	"sync"
 	"unicode"
 )
 
@@ -66,7 +65,6 @@ type Reader struct {
 	buf            *bufio.Reader
 	line           int
 	nextHeader     []byte
-	locker         *sync.Mutex
 }
 
 func NewReader(r io.Reader) *Reader {
@@ -75,7 +73,6 @@ func NewReader(r io.Reader) *Reader {
 		buf:            bufio.NewReader(r),
 		line:           1,
 		nextHeader:     nil,
-		locker:         new(sync.Mutex),
 	}
 }
 
@@ -111,7 +108,7 @@ func (r *Reader) ReadAll() ([]Entry, error) {
 //
 // No distinction is made between DNA/RNA or amino acid sequences. (Currently.)
 //
-// It is safe to call this function from multiple goroutines.
+// It is NOT safe to call this function from multiple goroutines.
 //
 // If the underlying reader is seekable, it is OK to use its seek operation
 // provided that you call (*Reader).SeekerReset before the next time Read is
@@ -120,10 +117,7 @@ func (r *Reader) ReadAll() ([]Entry, error) {
 // to a location that corresponds precisely to an entry boundary. i.e., the
 // file pointer should be at a '>' character.
 func (r *Reader) Read() (entry Entry, err error) {
-	r.locker.Lock()
-	defer r.locker.Unlock()
-
-	entry, err = r.readEntry()
+	entry, err = r.ReadEntry(TranslateNormal)
 	if !entry.isNull() {
 		return entry, nil
 	}
@@ -144,7 +138,13 @@ func (r *Reader) SeekerReset() {
 	r.nextHeader = nil
 }
 
-func (r *Reader) readEntry() (Entry, error) {
+// ReadEntry is exported for use in other packages that read FASTA-like files.
+//
+// The 'translate' function is used when sequences are checked for valid
+// characters.
+//
+// If you're just reading FASTA files, this method SHOULD NOT be used.
+func (r *Reader) ReadEntry(translate Translator) (Entry, error) {
 	entry := Entry{}
 	seenHeader := false
 
@@ -201,17 +201,13 @@ func (r *Reader) readEntry() (Entry, error) {
 		}
 		if !r.TrustSequences {
 			for i, b := range line {
-				switch {
-				case b >= 'a' && b <= 'z':
-					line[i] = byte(unicode.ToTitle(rune(b)))
-				case b >= 'A' && b <= 'Z':
-				case b == '*':
-				case b == '-':
-				default:
+				bNew, ok := translate(b)
+				if !ok {
 					return Entry{},
 						fmt.Errorf("Invalid character '%c' on line %d.",
 							b, r.line)
 				}
+				line[i] = bNew
 			}
 		}
 
@@ -223,6 +219,28 @@ func (r *Reader) readEntry() (Entry, error) {
 		r.line++
 	}
 	panic("unreachable")
+}
+
+// A Translator is a function that accepts a single character, checks whether
+// it's valid, and optionally maps it to a new character.
+//
+// Translators are ONLY applicable to developers writing their own parsers for
+// FASTA-like files. They should not be used to read regular FASTA files.
+type Translator func(b byte) (byte, bool)
+
+// TranslateNormal is the default translator for regular (and aligned) FASTA
+// files.
+func TranslateNormal(b byte) (byte, bool) {
+	switch {
+	case b >= 'a' && b <= 'z':
+		b = byte(unicode.ToTitle(rune(b)))
+	case b >= 'A' && b <= 'Z':
+	case b == '*':
+	case b == '-':
+	default:
+		return 0, false
+	}
+	return b, true
 }
 
 func trimHeader(line []byte) string {

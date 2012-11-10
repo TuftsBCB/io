@@ -26,6 +26,22 @@ func init() {
 	log.SetFlags(0)
 }
 
+func TestAlignedReader(t *testing.T) {
+	r := NewAlignedReader(bytes.NewBuffer(testAlignedInput))
+	_, err := r.ReadAll()
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+}
+
+func TestAlignedReaderError(t *testing.T) {
+	r := NewAlignedReader(bytes.NewBuffer(testBadAlignedInput))
+	_, err := r.ReadAll()
+	if err == nil {
+		t.Fatalf("Expected an error for sequences of unequal length.")
+	}
+}
+
 func TestReadAll(t *testing.T) {
 	r := NewReader(bytes.NewBuffer(testFastaInput))
 	all, err := r.ReadAll()
@@ -111,9 +127,7 @@ func testLastEntry(t *testing.T, last Entry) {
 			answer, ours)
 	}
 
-	answer = "YDR134C YDR134C SGDID:S000002541, Chr IV from 721481-721071, " +
-		"Genome Release 64-1-1, reverse complement, " +
-		"pseudogene, \"Hypothetical protein\""
+	answer = "YDR134C YDR134C SGDID:S000002541"
 	ours = last.Header
 	if answer != ours {
 		t.Fatalf("The last header should be\n%s\nbut we got\n%s",
