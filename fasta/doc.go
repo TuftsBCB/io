@@ -1,6 +1,6 @@
 /*
-Package fasta provides routines for reading and writing FASTA files. Routines
-are also provided to read and write aligned fasta files.
+Package fasta provides routines for reading and writing FASTA files and
+aligned FASTA files.
 
 The format used is the one described by NCBI:
 http://blast.ncbi.nlm.nih.gov/blastcgihelp.shtmlj
