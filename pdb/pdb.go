@@ -174,10 +174,11 @@ func (e *Entry) getOrMakeChain(ident byte) *Chain {
 	newChain := &Chain{
 		Entry:            e,
 		Ident:            ident,
-		Sequence:         make([]byte, 0, 10),
+		Sequence:         make([]byte, 0, 30),
 		AtomResidueStart: 0,
 		AtomResidueEnd:   0,
 		CaAtoms:          make(Atoms, 0, 30),
+		CaSequence:       make([]byte, 0, 30),
 	}
 	e.Chains = append(e.Chains, newChain)
 	return newChain
@@ -296,6 +297,7 @@ func (e *Entry) parseAtom(line []byte) {
 	chain.Atoms = append(chain.Atoms, atom)
 	if atom.Name == "CA" {
 		chain.CaAtoms = append(chain.CaAtoms, atom)
+		chain.CaSequence = append(chain.CaSequence, AminoThreeToOne[residue])
 	}
 }
 
@@ -312,6 +314,7 @@ type Chain struct {
 	AtomResidueStart, AtomResidueEnd int
 	Atoms                            Atoms
 	CaAtoms                          Atoms
+	CaSequence                       []byte
 }
 
 // ValidProtein returns true when there are ATOM records corresponding to
