@@ -9,6 +9,8 @@ import (
 	"log"
 	"os"
 	"testing"
+
+	"github.com/BurntSushi/bcbgo/seq"
 )
 
 var (
@@ -28,7 +30,7 @@ func init() {
 
 func TestAlignedReader(t *testing.T) {
 	r := NewAlignedReader(bytes.NewBuffer(testAlignedInput))
-	_, err := r.ReadAll()
+	_, err := r.Read()
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -36,7 +38,7 @@ func TestAlignedReader(t *testing.T) {
 
 func TestAlignedReaderError(t *testing.T) {
 	r := NewAlignedReader(bytes.NewBuffer(testBadAlignedInput))
-	_, err := r.ReadAll()
+	_, err := r.Read()
 	if err == nil {
 		t.Fatalf("Expected an error for sequences of unequal length.")
 	}
@@ -52,7 +54,7 @@ func TestReadAll(t *testing.T) {
 }
 
 func TestRead(t *testing.T) {
-	var last, entry Entry
+	var last, entry seq.Sequence
 	var err error
 
 	r := NewReader(bytes.NewBuffer(testFastaInput))
@@ -71,21 +73,7 @@ func TestRead(t *testing.T) {
 }
 
 func TestReadWrite(t *testing.T) {
-	if len(flagFastaFile) == 0 {
-		t.Fatalf("Please set the '--fasta path/to/file.fasta' flag.")
-	}
-
-	f, err := os.Open(flagFastaFile)
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-
-	contents, err := ioutil.ReadAll(f)
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-
-	entries, err := NewReader(bytes.NewBuffer(contents)).ReadAll()
+	entries, err := NewReader(bytes.NewBuffer(testFastaInput)).ReadAll()
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
@@ -102,7 +90,7 @@ func TestReadWrite(t *testing.T) {
 		}
 	}
 
-	testBytesEqual(t, contents, buf.Bytes())
+	testBytesEqual(t, testFastaInput, buf.Bytes())
 }
 
 func testBytesEqual(t *testing.T, bs1, bs2 []byte) {
@@ -116,19 +104,19 @@ func testBytesEqual(t *testing.T, bs1, bs2 []byte) {
 	}
 }
 
-func testLastEntry(t *testing.T, last Entry) {
+func testLastEntry(t *testing.T, last seq.Sequence) {
 	// Check the value of the last sequence.
 	answer := "MQFSTVASIAAIAAVASAASNITTATVTEESTTLVTITSCEDHVCSETVSPALVSTATVTVN" +
-		"DVIT*YTTWCPLPTTEAPKNTTSPAPTEKPTEKPTEKPTQQGSSTQTVTSYTGAAVKALPAAGALLAG" +
-		"AAALLL*"
-	ours := string(last.Sequence)
+		"DVITYTTWCPLPTTEAPKNTTSPAPTEKPTEKPTEKPTQQGSSTQTVTSYTGAAVKALPAAGALLAG" +
+		"AAALLL"
+	ours := fmt.Sprintf("%s", last.Residues)
 	if answer != ours {
 		t.Fatalf("The last sequence should be\n%s\nbut we got\n%s",
 			answer, ours)
 	}
 
 	answer = "YDR134C YDR134C SGDID:S000002541"
-	ours = last.Header
+	ours = last.Name
 	if answer != ours {
 		t.Fatalf("The last header should be\n%s\nbut we got\n%s",
 			answer, ours)
@@ -136,7 +124,7 @@ func testLastEntry(t *testing.T, last Entry) {
 }
 
 func ExampleRead() {
-	var last Entry
+	var last seq.Sequence
 
 	if len(flagFastaFile) == 0 {
 		log.Fatalf("Please set the '--fasta path/to/file.fasta' flag.")
@@ -158,6 +146,6 @@ func ExampleRead() {
 		}
 		last = entry
 	}
-	fmt.Printf("%d\n", 0*len(last.Header))
+	fmt.Printf("%d\n", 0*len(last.Name))
 	// Output: 0
 }
