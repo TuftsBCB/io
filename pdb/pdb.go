@@ -9,6 +9,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/BurntSushi/bcbgo/seq"
 )
 
 // AminoThreeToOne is a map from three letter amino acids to their
@@ -174,11 +176,11 @@ func (e *Entry) getOrMakeChain(ident byte) *Chain {
 	newChain := &Chain{
 		Entry:            e,
 		Ident:            ident,
-		Sequence:         make([]byte, 0, 30),
+		Sequence:         make([]seq.Residue, 0, 30),
 		AtomResidueStart: 0,
 		AtomResidueEnd:   0,
 		CaAtoms:          make(Atoms, 0, 30),
-		CaSequence:       make([]byte, 0, 30),
+		CaSequence:       make([]seq.Residue, 0, 30),
 	}
 	e.Chains = append(e.Chains, newChain)
 	return newChain
@@ -219,7 +221,7 @@ func (e *Entry) parseSeqres(line []byte) {
 		// Get the residue. If it's not in our sequence map, skip it.
 		residue := strings.TrimSpace(string(line[i:end]))
 		if single, ok := AminoThreeToOne[residue]; ok {
-			chain.Sequence = append(chain.Sequence, single)
+			chain.Sequence = append(chain.Sequence, seq.Residue(single))
 		}
 	}
 }
@@ -297,7 +299,8 @@ func (e *Entry) parseAtom(line []byte) {
 	chain.Atoms = append(chain.Atoms, atom)
 	if atom.Name == "CA" {
 		chain.CaAtoms = append(chain.CaAtoms, atom)
-		chain.CaSequence = append(chain.CaSequence, AminoThreeToOne[residue])
+		chain.CaSequence = append(chain.CaSequence,
+			seq.Residue(AminoThreeToOne[residue]))
 	}
 }
 
@@ -310,11 +313,11 @@ func (e *Entry) parseAtom(line []byte) {
 type Chain struct {
 	Entry                            *Entry
 	Ident                            byte
-	Sequence                         []byte
+	Sequence                         []seq.Residue
 	AtomResidueStart, AtomResidueEnd int
 	Atoms                            Atoms
 	CaAtoms                          Atoms
-	CaSequence                       []byte
+	CaSequence                       []seq.Residue
 }
 
 // ValidProtein returns true when there are ATOM records corresponding to
@@ -329,7 +332,7 @@ func (c *Chain) String() string {
 	return strings.TrimSpace(
 		fmt.Sprintf("> Chain %c (%d, %d) :: length %d\n%s",
 			c.Ident, c.AtomResidueStart, c.AtomResidueEnd,
-			len(c.Sequence), string(c.Sequence)))
+			len(c.Sequence), c.Sequence))
 }
 
 // Atom contains information about an ATOM record, including the serial
