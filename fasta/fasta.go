@@ -32,10 +32,6 @@ func SequenceFasta(s seq.Sequence, cols int) string {
 	return fmt.Sprintf(">%s\n%s", s.Name, strings.Join(wrapped, "\n"))
 }
 
-func seqIsNull(s seq.Sequence) bool {
-	return len(s.Name) == 0 && s.Residues == nil
-}
-
 // A Reader reads entries from FASTA encoded input.
 //
 // If TrustSequences is true, then sequence data will not be checked to make
@@ -104,14 +100,14 @@ func (r *Reader) ReadAll() ([]seq.Sequence, error) {
 // file pointer should be at a '>' character.
 func (r *Reader) Read() (s seq.Sequence, err error) {
 	s, err = r.ReadSequence(TranslateNormal)
-	if !seqIsNull(s) {
+	if !s.IsNull() {
 		return s, nil
 	}
 	if err == io.EOF {
 		return seq.Sequence{}, err
 	}
 	if err != nil {
-		return seq.Sequence{}, fmt.Errorf("Error on line %d: %s", r.line, err)
+		return seq.Sequence{}, err
 	}
 	panic("unreachable")
 }
@@ -149,7 +145,8 @@ func (r *Reader) ReadSequence(translate Translator) (seq.Sequence, error) {
 				return s, io.EOF
 			}
 		} else if err != nil {
-			return seq.Sequence{}, err
+			return seq.Sequence{}, fmt.Errorf("Error on line %d: %s",
+				r.line, err)
 		}
 		line = bytes.TrimSpace(line)
 
@@ -163,7 +160,8 @@ func (r *Reader) ReadSequence(translate Translator) (seq.Sequence, error) {
 		if !seenHeader {
 			if line[0] != '>' {
 				return seq.Sequence{},
-					fmt.Errorf("Expected '>', got '%c'.", line[0])
+					fmt.Errorf("Expected '>', got '%c' on line %d.",
+						line[0], r.line)
 			}
 
 			// Trim the '>' and load this line into the header.

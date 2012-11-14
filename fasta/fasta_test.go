@@ -28,22 +28,6 @@ func init() {
 	log.SetFlags(0)
 }
 
-func TestAlignedReader(t *testing.T) {
-	r := NewAlignedReader(bytes.NewBuffer(testAlignedInput))
-	_, err := r.Read()
-	if err != nil {
-		t.Fatalf("%s", err)
-	}
-}
-
-func TestAlignedReaderError(t *testing.T) {
-	r := NewAlignedReader(bytes.NewBuffer(testBadAlignedInput))
-	_, err := r.Read()
-	if err == nil {
-		t.Fatalf("Expected an error for sequences of unequal length.")
-	}
-}
-
 func TestReadAll(t *testing.T) {
 	r := NewReader(bytes.NewBuffer(testFastaInput))
 	all, err := r.ReadAll()
@@ -123,9 +107,7 @@ func testLastEntry(t *testing.T, last seq.Sequence) {
 	}
 }
 
-func ExampleRead() {
-	var last seq.Sequence
-
+func BenchmarkRead(b *testing.B) {
 	if len(flagFastaFile) == 0 {
 		log.Fatalf("Please set the '--fasta path/to/file.fasta' flag.")
 	}
@@ -135,17 +117,51 @@ func ExampleRead() {
 		log.Fatalf("%s", err)
 	}
 
-	r := NewReader(f)
-	for {
-		entry, err := r.Read()
-		if err == io.EOF {
-			break
-		}
+	for i := 0; i < b.N; i++ {
+		_, err := f.Seek(0, os.SEEK_SET)
 		if err != nil {
 			log.Fatalf("%s", err)
 		}
-		last = entry
+
+		r := NewReader(f)
+		for {
+			_, err := r.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+		}
 	}
-	fmt.Printf("%d\n", 0*len(last.Name))
-	// Output: 0
+}
+
+func BenchmarkReadTrusted(b *testing.B) {
+	if len(flagFastaFile) == 0 {
+		log.Fatalf("Please set the '--fasta path/to/file.fasta' flag.")
+	}
+
+	f, err := os.Open(flagFastaFile)
+	if err != nil {
+		log.Fatalf("%s", err)
+	}
+
+	for i := 0; i < b.N; i++ {
+		_, err := f.Seek(0, os.SEEK_SET)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+
+		r := NewReader(f)
+		r.TrustSequences = true
+		for {
+			_, err := r.Read()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				log.Fatalf("%s", err)
+			}
+		}
+	}
 }
