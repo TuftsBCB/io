@@ -123,18 +123,9 @@ func WriteA3M(w io.Writer, msa seq.MSA) error {
 
 func write(writer io.Writer, msa seq.MSA, formatter formatSeq) error {
 	w := fasta.NewWriter(writer)
-	w.Columns = 0
 	w.Asterisk = false
-	seqLen := -1
 	for row := range msa.Entries {
-		s := formatter(row)
-		if seqLen == -1 {
-			seqLen = len(s.Residues)
-		} else if seqLen != len(s.Residues) {
-			return fmt.Errorf("Sequence '%s' has length %d, but other "+
-				"sequences have length %d.", s.Name, len(s.Residues), seqLen)
-		}
-		if err := w.Write(s); err != nil {
+		if err := w.Write(formatter(row)); err != nil {
 			return err
 		}
 	}

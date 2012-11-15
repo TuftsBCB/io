@@ -1,0 +1,70 @@
+HHsearch 1.5
+NAME  YAL001C TFC3 SGDID:S000000001, Chr I from 151006-147594,151166-151097, Genome Release 64-1-1, reverse complement, Verified ORF, "Largest of six subunits of the RNA polymerase III transcription initiation factor complex (TFIIIC); part of the TauB domain of TFIIIC that binds DNA at the BoxB promoter sites of tRNA and similar genes; cooperates with Tfc6p in DNA binding"
+FAM   
+LENG  11 match states, 11 columns in multiple alignment
+NEFF  4.68972727273
+PCT   False
+EVD   0.4501  9.7314
+SEQ
+>Consensus
+xxxxxpdxLVx
+>YAL001C TFC3 SGDID:S000000001, Chr I from 151006-147594,151166-151097, Genome Release 64-1-1, reverse complement, Verified ORF, "Largest of six subunits of the RNA polymerase III transcription initiation factor complex (TFIIIC); part of the TauB domain of TFIIIC that binds DNA at the BoxB promoter sites of tRNA and similar genes; cooperates with Tfc6p in DNA binding"
+VLTIYPDELVQ
+>gi|149237140|ref|XP_001524447.1| hypothetical protein LELG_04419 [Lodderomyces elongisporus NRRL YB-4239]gi|146451982|gb|EDK46238.1| hypothetical protein LELG_04419 [Lodderomyces elongisporus NRRL YB-4239]
+LFSCTPYELVA
+>gi|330925270|ref|XP_003300979.1| hypothetical protein PTT_12374 [Pyrenophora teres f. teres 0-1]gi|311324625|gb|EFQ90928.1| hypothetical protein PTT_12374 [Pyrenophora teres f. teres 0-1]
+-----YDELLD
+>gi|336373347|gb|EGO01685.1| hypothetical protein SERLA73DRAFT_166216 [Serpula lacrymans var. lacrymans S7.3]gi|336386181|gb|EGO27327.1| hypothetical protein SERLADRAFT_446557 [Serpula lacrymans var. lacrymans S7.9]
+------DELIH
+>gi|328768215|gb|EGF78262.1| hypothetical protein BATDEDRAFT_26812 [Batrachochytrium dendrobatidis JAM81]
+-----------
+>gi|334182649|ref|NP_001185022.1| B-block binding subunit of TFIIIC [Arabidopsis thaliana]gi|332191469|gb|AEE29590.1| B-block binding subunit of TFIIIC [Arabidopsis thaliana]
+------DSIVC
+>gi|145606234|ref|XP_365745.2| hypothetical protein MGG_02447 [Magnaporthe oryzae 70-15]gi|145013949|gb|EDJ98590.1| hypothetical protein MGG_02447 [Magnaporthe oryzae 70-15]
+-----VDGLVE
+>gi|134109187|ref|XP_776708.1| hypothetical protein CNBC1990 [Cryptococcus neoformans var. neoformans B-3501A]gi|50259388|gb|EAL22061.1| hypothetical protein CNBC1990 [Cryptococcus neoformans var. neoformans B-3501A]
+-------DLLE
+>gi|327289173|ref|XP_003229299.1| PREDICTED: general transcription factor 3C polypeptide 1-like [Anolis carolinensis]
+---------LW
+>gi|281207835|gb|EFA82015.1| winged helix DNA-binding domain-containing protein [Polysphondylium pallidum PN500]
+-----------
+#
+NULL   3706	5728	4211	4064	4839	3729	4763	4308	4069	3323	5509	4640	4464	4937	4285	4423	3815	3783	6325	4665
+HMM    A	C	D	E	F	G	H	I	K	L	M	N	P	Q	R	S	T	V	W	Y
+       M->M	M->I	M->D	I->M	I->I	D->M	D->D	Neff	Neff_I	Neff_D
+       0      	*	0      	*	*	*	*	*	*	*	
+V 1    3134   	6925   	7727   	7344   	5971   	3724   	8351   	5318   	8526   	3397   	6350   	6860   	6351   	7421   	7775   	1417   	3563   	2884   	8435   	6836   	1
+       86     	2486   	5691   	1082   	553    	2000   	249    	3073   	1106   	0      	
+
+L 2    3903   	7297   	8350   	7821   	1434   	6704   	7911   	3673   	8044   	3429   	3396   	7587   	7286   	4528   	7555   	3591   	4139   	4521   	7475   	5947   	2
+       4      	5758   	5758   	663    	864    	2000   	249    	3321   	1036   	0      	
+
+T 3    5446   	8695   	6101   	5584   	6495   	4363   	7431   	5715   	5702   	3201   	7300   	4439   	2769   	6545   	5976   	3015   	3031   	2033   	8276   	7081   	3
+       3      	5846   	5846   	2000   	249    	2000   	249    	3677   	0      	0      	
+
+I 4    5523   	2011   	7240   	6841   	6006   	6843   	7904   	2680   	6824   	2420   	6429   	7667   	6441   	7328   	6895   	2828   	3829   	3889   	8310   	6641   	4
+       3      	5872   	5872   	2000   	249    	2000   	249    	3789   	0      	0      	
+
+Y 5    2926   	9625   	4643   	5601   	4952   	6561   	7725   	8733   	6177   	7586   	9414   	5463   	3022   	7131   	6493   	2031   	2544   	8196   	10969  	2718   	5
+       3      	5872   	5872   	2000   	249    	2000   	249    	3789   	0      	0      	
+
+P 6    5442   	9474   	8036   	6875   	4616   	7510   	7955   	4399   	6807   	2708   	7229   	8197   	953    	4868   	7000   	6612   	6053   	3819   	9037   	4757   	6
+       3      	6062   	6062   	2000   	249    	2000   	249    	4722   	0      	0      	
+
+D 7    4784   	11163  	1061   	2957   	9224   	7079   	8203   	8212   	4440   	7673   	9428   	6797   	5844   	5132   	3279   	4117   	7049   	7820   	10597  	4089   	7
+       2      	6224   	6224   	2000   	249    	2000   	249    	5693   	0      	0      	
+
+E 8    3656   	11248  	2944   	1412   	8774   	3872   	6345   	8112   	4063   	5487   	9145   	5396   	8291   	4981   	4857   	3494   	5569   	4732   	10083  	8514   	8
+       13     	6239   	4127   	2000   	249    	2000   	249    	5791   	0      	0      	
+
+L 9    6423   	9093   	9764   	9148   	6239   	9542   	9899   	2790   	9568   	504    	6834   	9823   	9988   	8864   	8998   	8433   	7450   	3522   	8915   	7940   	9
+       2      	6240   	6240   	2000   	249    	3000   	116    	5794   	0      	1000   	
+
+V 10   5779   	8718   	9044   	7452   	6619   	8526   	8732   	1807   	7077   	2378   	5724   	8653   	9309   	7765   	7014   	7381   	7323   	1275   	8429   	7110   	10
+       2      	6265   	6265   	2000   	249    	3000   	116    	5969   	0      	1000   	
+
+Q 11   3581   	5278   	2725   	2197   	6043   	6957   	4213   	7962   	5092   	5595   	8698   	5279   	5974   	3405   	4374   	2893   	5350   	5879   	5389   	8177   	11
+       0      	*	*	0      	*	0      	*	5969   	0      	1000   	
+
+//
+
