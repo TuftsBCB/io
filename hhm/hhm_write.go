@@ -81,7 +81,7 @@ func writeMeta(buf *bufio.Writer, hhm *HHM) (err error) {
 	if len(meta.Filt) > 0 {
 		w("FILT  %s", meta.Filt)
 	}
-	w("NEFF  %0.1f", meta.Neff)
+	w("NEFF  %f", meta.Neff)
 	if meta.EvdLambda != 0 || meta.EvdMu != 0 {
 		w("EVD   %0.4f  %0.4f", meta.EvdLambda, meta.EvdMu)
 	}

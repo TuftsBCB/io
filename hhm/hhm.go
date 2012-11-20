@@ -64,3 +64,61 @@ type HHMSecondary struct {
 	SSconf    *seq.Sequence
 	Consensus *seq.Sequence
 }
+
+// Slice will create a new collection of secondary structure sequences where
+// each sequence has been sliced with the given start/end parameters.
+func (ss HHMSecondary) Slice(start, end int) HHMSecondary {
+	var ssdssp, sadssp, sspred, ssconf, ssconsensus *seq.Sequence
+
+	if ss.SSdssp != nil {
+		t := ss.SSdssp.Slice(start, end)
+		ssdssp = &t
+	}
+	if ss.SAdssp != nil {
+		t := ss.SAdssp.Slice(start, end)
+		sadssp = &t
+	}
+	if ss.SSpred != nil {
+		t := ss.SSpred.Slice(start, end)
+		sspred = &t
+	}
+	if ss.SSconf != nil {
+		t := ss.SSconf.Slice(start, end)
+		ssconf = &t
+	}
+	if ss.Consensus != nil {
+		t := ss.Consensus.Slice(start, end)
+		ssconsensus = &t
+	}
+	return HHMSecondary{
+		SSdssp:    ssdssp,
+		SAdssp:    sadssp,
+		SSpred:    sspred,
+		SSconf:    ssconf,
+		Consensus: ssconsensus,
+	}
+}
+
+// Slice dices up an entire HHM file. The slice indices should be in terms of
+// the number of match/delete states in the underlying HMM.
+// All secondary structure annotations are also sliced.
+// The multiple sequence alignment is also sliced.
+// The NEFF for the HHM is also re-computed as the average of all NeffM scores
+// in each HMM column.
+func (hhm *HHM) Slice(start, end int) *HHM {
+	hmm := hhm.HMM.Slice(start, end)
+
+	meta := hhm.Meta
+	meta.Neff = 0
+	for _, node := range hmm.Nodes {
+		meta.Neff += node.NeffM
+	}
+	meta.Neff /= seq.Prob(len(hmm.Nodes))
+
+	return &HHM{
+		Meta:      meta,
+		Secondary: hhm.Secondary.Slice(start, end),
+		MSA:       hhm.MSA.Slice(start, end),
+		HMM:       hmm,
+	}
+}
