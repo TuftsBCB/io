@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"unicode"
 
 	"github.com/BurntSushi/bcbgo/seq"
 )
@@ -170,7 +171,12 @@ func readHits(buf *bytes.Buffer) (hits []Hit, err error) {
 		hit.Name = str(numRest[1][0:32])
 
 		// So now we can split the rest by whitespace.
-		rest := bytes.Fields(numRest[1][32:])
+		// Except for when there isn't any whitespace to delimit columns!
+		// Oh my. *facepalm*
+		delim := func(r rune) bool {
+			return unicode.IsSpace(r) || r == '('
+		}
+		rest := bytes.FieldsFunc(numRest[1][32:], delim)
 
 		hit.Prob, err = readFloat(rest[0])
 		if err != nil {
