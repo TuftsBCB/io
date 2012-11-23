@@ -86,7 +86,9 @@ func writeMeta(buf *bufio.Writer, hhm *HHM) (err error) {
 		w("EVD   %0.4f  %0.4f", meta.EvdLambda, meta.EvdMu)
 	}
 	if meta.Pct {
-		w("PCT")
+		w("PCT   True")
+	} else {
+		w("PCT   False")
 	}
 	if len(meta.Desc) > 0 {
 		w("DESC  %s", meta.Desc)
