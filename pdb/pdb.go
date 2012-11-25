@@ -23,6 +23,7 @@ var AminoThreeToOne = map[string]byte{
 	"SEC": 'U', "PYL": 'O',
 	"UNK": 'X', "ACE": 'X', "NH2": 'X',
 	"ASX": 'X', "GLX": 'X',
+	"MSE": 'M',
 }
 
 // AminoOneToThree is the reverse of AminoThreeToOne. It is created in
@@ -221,9 +222,14 @@ func (e *Entry) parseSeqres(line []byte) {
 
 		// Get the residue. If it's not in our sequence map, skip it.
 		residue := strings.TrimSpace(string(line[i:end]))
+		if len(residue) == 0 {
+			break
+		}
 		if single, ok := AminoThreeToOne[residue]; ok {
 			chain.Sequence = append(chain.Sequence, seq.Residue(single))
 			chain.CaSeqRes = append(chain.CaSeqRes, nil)
+		} else {
+			panic(fmt.Sprintf("Unknown residue '%s'.", residue))
 		}
 	}
 }
@@ -308,6 +314,10 @@ func (e *Entry) parseAtom(line []byte) {
 		// CaSeqRes list. Which is a correspondence between residues and
 		// *maybe* atoms.
 		if inum > 0 {
+			if inum-1 >= len(chain.CaSeqRes) {
+				println(inum-1, len(chain.CaSeqRes))
+				fmt.Printf("%d :: %s\n", len(chain.Sequence), chain.Sequence)
+			}
 			chain.CaSeqRes[inum-1] = &atom
 		}
 	}
@@ -343,6 +353,20 @@ func (c *Chain) String() string {
 		fmt.Sprintf("> Chain %c (%d, %d) :: length %d\n%s",
 			c.Ident, c.AtomResidueStart, c.AtomResidueEnd,
 			len(c.Sequence), c.Sequence))
+}
+
+// CaAtomSlice attempts to extract a contiguous slice of alpha-carbon ATOM
+// records based on *residue* index. Namely, if a contiguous slice cannot be
+// found, nil is returned.
+func (c *Chain) CaAtomSlice(start, end int) Atoms {
+	atoms := make(Atoms, end-start)
+	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
+		if c.CaSeqRes[cai] == nil {
+			return nil
+		}
+		atoms[i] = *c.CaSeqRes[cai]
+	}
+	return atoms
 }
 
 // Atom contains information about an ATOM record, including the serial
