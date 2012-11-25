@@ -181,6 +181,7 @@ func (e *Entry) getOrMakeChain(ident byte) *Chain {
 		AtomResidueEnd:   0,
 		CaAtoms:          make(Atoms, 0, 30),
 		CaSequence:       make([]seq.Residue, 0, 30),
+		CaSeqRes:         make([]*Atom, 0, 30),
 	}
 	e.Chains = append(e.Chains, newChain)
 	return newChain
@@ -222,6 +223,7 @@ func (e *Entry) parseSeqres(line []byte) {
 		residue := strings.TrimSpace(string(line[i:end]))
 		if single, ok := AminoThreeToOne[residue]; ok {
 			chain.Sequence = append(chain.Sequence, seq.Residue(single))
+			chain.CaSeqRes = append(chain.CaSeqRes, nil)
 		}
 	}
 }
@@ -301,6 +303,13 @@ func (e *Entry) parseAtom(line []byte) {
 		chain.CaAtoms = append(chain.CaAtoms, atom)
 		chain.CaSequence = append(chain.CaSequence,
 			seq.Residue(AminoThreeToOne[residue]))
+
+		// If we have a valid residue number, then add this atom into our
+		// CaSeqRes list. Which is a correspondence between residues and
+		// *maybe* atoms.
+		if inum > 0 {
+			chain.CaSeqRes[inum-1] = &atom
+		}
 	}
 }
 
@@ -318,6 +327,7 @@ type Chain struct {
 	Atoms                            Atoms
 	CaAtoms                          Atoms
 	CaSequence                       []seq.Residue
+	CaSeqRes                         []*Atom
 }
 
 // ValidProtein returns true when there are ATOM records corresponding to
