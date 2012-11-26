@@ -25,25 +25,52 @@ func translateA2M(b byte) (seq.Residue, bool) {
 }
 
 // Read will read a single MSA from the input, where the input can be formatted
-// in FASTA, A2M or A3M formats. Sequences are read until io.EOF.
+// in A2M or A3M formats. Sequences are read until io.EOF.
+//
+// If you need to read FASTA aligned format, use ReadFasta.
 func Read(reader io.Reader) (seq.MSA, error) {
 	r := fasta.NewReader(reader)
 	r.TrustSequences = false
-	return read(r)
+	return read(r, false)
+}
+
+// Read will read a single MSA from the input, where the input can be formatted
+// in FASTA format. Sequences are read until io.EOF.
+//
+// If you need to read A2M or A3M aligned formats, use Read.
+func ReadFasta(reader io.Reader) (seq.MSA, error) {
+	r := fasta.NewReader(reader)
+	r.TrustSequences = false
+	return read(r, true)
 }
 
 // ReadTrusted will read a single MSA from trusted input, where the input can
-// be formatted/ in FASTA, A2M or A3M formats. Sequences are read until io.EOF.
+// be formatted/ in A2M or A3M formats. Sequences are read until io.EOF.
 //
 // "Trust" in this context means that the input doesn't contain any illegal
 // characters in the sequence. Trusting the input should be faster.
+//
+// If you need to read FASTA aligned format, use ReadTrustedFasta.
 func ReadTrusted(reader io.Reader) (seq.MSA, error) {
 	r := fasta.NewReader(reader)
 	r.TrustSequences = true
-	return read(r)
+	return read(r, false)
 }
 
-func read(r *fasta.Reader) (seq.MSA, error) {
+// ReadTrustedFasta will read a single MSA from trusted input, where the input
+// can be formatted/ in FASTA format. Sequences are read until io.EOF.
+//
+// "Trust" in this context means that the input doesn't contain any illegal
+// characters in the sequence. Trusting the input should be faster.
+//
+// If you need to read A2M or A3M aligned formats, use ReadTrusted.
+func ReadTrustedFasta(reader io.Reader) (seq.MSA, error) {
+	r := fasta.NewReader(reader)
+	r.TrustSequences = true
+	return read(r, true)
+}
+
+func read(r *fasta.Reader, fasta bool) (seq.MSA, error) {
 	msa := seq.NewMSA()
 	for {
 		s, err := readSequence(r)
@@ -54,7 +81,11 @@ func read(r *fasta.Reader) (seq.MSA, error) {
 			return seq.MSA{}, err
 		}
 
-		msa.Add(s)
+		if fasta {
+			msa.AddFasta(s)
+		} else {
+			msa.Add(s)
+		}
 		if len(msa.Entries) > 1 {
 			// We can't use 's' directly, because a sequence added to an MSA
 			// may be modified if it isn't already in A2M format.
