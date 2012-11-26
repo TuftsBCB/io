@@ -306,19 +306,17 @@ func (e *Entry) parseAtom(line []byte) {
 	// Now add our atom to the chain.
 	chain.Atoms = append(chain.Atoms, atom)
 	if atom.Name == "CA" {
+		r := seq.Residue(AminoThreeToOne[residue])
 		chain.CaAtoms = append(chain.CaAtoms, atom)
-		chain.CaSequence = append(chain.CaSequence,
-			seq.Residue(AminoThreeToOne[residue]))
+		chain.CaSequence = append(chain.CaSequence, r)
 
 		// If we have a valid residue number, then add this atom into our
 		// CaSeqRes list. Which is a correspondence between residues and
 		// *maybe* atoms.
-		if inum > 0 {
-			if inum-1 >= len(chain.CaSeqRes) {
-				println(inum-1, len(chain.CaSeqRes))
-				fmt.Printf("%d :: %s\n", len(chain.Sequence), chain.Sequence)
+		if inum > 0 && inum-1 < len(chain.CaSeqRes) {
+			if chain.Sequence[inum-1] == r {
+				chain.CaSeqRes[inum-1] = &atom
 			}
-			chain.CaSeqRes[inum-1] = &atom
 		}
 	}
 }
