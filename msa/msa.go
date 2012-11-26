@@ -124,6 +124,7 @@ func WriteA3M(w io.Writer, msa seq.MSA) error {
 func write(writer io.Writer, msa seq.MSA, formatter formatSeq) error {
 	w := fasta.NewWriter(writer)
 	w.Asterisk = false
+	w.Columns = 0
 	for row := range msa.Entries {
 		if err := w.Write(formatter(row)); err != nil {
 			return err

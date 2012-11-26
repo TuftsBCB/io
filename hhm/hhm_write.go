@@ -114,7 +114,10 @@ func writeSecondary(buf *bufio.Writer, hhm *HHM) error {
 	if ss.Consensus != nil {
 		towrite = append(towrite, *ss.Consensus)
 	}
-	return fasta.NewWriter(buf).WriteAll(towrite)
+	w := fasta.NewWriter(buf)
+	w.Asterisk = false
+	w.Columns = 0
+	return w.WriteAll(towrite)
 }
 
 func writeMSA(buf *bufio.Writer, hhm *HHM) error {
@@ -150,7 +153,7 @@ func writeHMM(buf *bufio.Writer, hhm *HHM) (err error) {
 	w("       0\t*\t0\t*\t*\t*\t*\t*\t*\t*\n")
 
 	for _, node := range hmm.Nodes {
-		w("%c  %d  ", node.Residue, node.NodeNum)
+		w("%c %d  ", node.Residue, node.NodeNum)
 		must(writeEmissions(buf, hmm.Alphabet, node.MatEmit))
 		w("  %d\n", node.NodeNum)
 		w("   ")
