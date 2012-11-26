@@ -30,6 +30,13 @@ var AminoThreeToOne = map[string]byte{
 // this packages 'init' function.
 var AminoOneToThree = map[byte]string{}
 
+func getThreeToOne(threeAbbrev string) byte {
+	if v, ok := AminoThreeToOne[threeAbbrev]; ok {
+		return v
+	}
+	return 'X'
+}
+
 func init() {
 	// Create a reverse map of AminoThreeToOne.
 	for k, v := range AminoThreeToOne {
@@ -225,12 +232,9 @@ func (e *Entry) parseSeqres(line []byte) {
 		if len(residue) == 0 {
 			break
 		}
-		if single, ok := AminoThreeToOne[residue]; ok {
-			chain.Sequence = append(chain.Sequence, seq.Residue(single))
-			chain.CaSeqRes = append(chain.CaSeqRes, nil)
-		} else {
-			panic(fmt.Sprintf("Unknown residue '%s' in %s.", residue, e.IdCode))
-		}
+		single := getThreeToOne(residue)
+		chain.Sequence = append(chain.Sequence, seq.Residue(single))
+		chain.CaSeqRes = append(chain.CaSeqRes, nil)
 	}
 }
 
@@ -306,7 +310,7 @@ func (e *Entry) parseAtom(line []byte) {
 	// Now add our atom to the chain.
 	chain.Atoms = append(chain.Atoms, atom)
 	if atom.Name == "CA" {
-		r := seq.Residue(AminoThreeToOne[residue])
+		r := seq.Residue(getThreeToOne[residue])
 		chain.CaAtoms = append(chain.CaAtoms, atom)
 		chain.CaSequence = append(chain.CaSequence, r)
 
