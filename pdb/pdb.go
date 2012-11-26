@@ -23,7 +23,7 @@ var AminoThreeToOne = map[string]byte{
 	"SEC": 'U', "PYL": 'O',
 	"UNK": 'X', "ACE": 'X', "NH2": 'X',
 	"ASX": 'X', "GLX": 'X',
-	"MSE": 'M', "CSA": 'C', "LLP": 'K', "CSW": 'C',
+	"MSE": 'M', "CSA": 'C', "LLP": 'K', "CSW": 'C', "STE": 'X',
 }
 
 // AminoOneToThree is the reverse of AminoThreeToOne. It is created in
