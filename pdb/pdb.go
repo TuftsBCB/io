@@ -310,7 +310,7 @@ func (e *Entry) parseAtom(line []byte) {
 	// Now add our atom to the chain.
 	chain.Atoms = append(chain.Atoms, atom)
 	if atom.Name == "CA" {
-		r := seq.Residue(getThreeToOne[residue])
+		r := seq.Residue(getThreeToOne(residue))
 		chain.CaAtoms = append(chain.CaAtoms, atom)
 		chain.CaSequence = append(chain.CaSequence, r)
 
