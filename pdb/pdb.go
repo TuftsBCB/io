@@ -229,7 +229,7 @@ func (e *Entry) parseSeqres(line []byte) {
 			chain.Sequence = append(chain.Sequence, seq.Residue(single))
 			chain.CaSeqRes = append(chain.CaSeqRes, nil)
 		} else {
-			panic(fmt.Sprintf("Unknown residue '%s'.", residue))
+			panic(fmt.Sprintf("Unknown residue '%s' in %s.", residue, e.IdCode))
 		}
 	}
 }
