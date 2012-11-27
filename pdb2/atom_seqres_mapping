@@ -1,0 +1,42 @@
+Mapping SEQRES residues to ATOM records.
+
+The idea is to use the info in REMARK 465. We make the following assumption:
+Every residue in SEQRES that is NOT present as an ATOM record has a 
+corresponding entry in REMARK 465.
+
+This assumption seems consistent with the PDB format documentation:
+
+    REMARK 465 lists the residues that are present in the SEQRES records but 
+    are completely absent from the coordinates section.
+
+Using this assumption, we can construct a precise alignment of ATOM records 
+with their corresponding SEQRES residues. i.e., start with two lists: 465's and 
+ATOMs and generate a new list. The first element of the list is the smaller of 
+the smallest elements from the 465's and ATOMs (where ordinality is defined by 
+their residue sequence number). The next element is the next smallest, etc.
+
+Invariants of this list (for a particular chain):
+
+    The length is equivalent to the number of residues in the SEQRES records
+    for a particular chain.
+
+    The residue sequence numbers are contiugous (increment by one for each
+    element in the resulting list).
+
+    Every element in the list belongs to either (exclusive) the 465 list 
+    (missing ATOM record) or the ATOM record list (has an ATOM record).
+
+    The list has a correspondence with the list of residues generated from 
+    SEQRES records.
+
+Once this list is computed, it is a precise correspondence to residues in the 
+SEQRES records. Thus, a residue in the list formed from an ATOM record 
+contains the coordinate information for the corresponding residue in the SEQRES 
+record.
+
+Example: See PDB entry 3MXQ. It is a particularly extreme example with negative 
+sequence numbers, and gaps in the ATOM records on both ends of the query 
+sequence *and* in the middle. (On several chains.) Note here that the negative 
+sequence numbers are OK; so long as they are consistent among themselves (i.e., 
+contiguous and increasing).
+
