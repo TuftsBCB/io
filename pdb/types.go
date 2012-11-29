@@ -118,7 +118,7 @@ func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
 
 	atoms := make([]Coords, end-start)
 	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
-		if residues[start] == nil {
+		if residues[cai] == nil {
 			return nil
 		}
 		atoms[i] = *residues[cai]
