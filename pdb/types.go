@@ -70,7 +70,7 @@ func (entry *Entry) OneChain() *Chain {
 
 // IsProtein returns true if the chain consists of amino acids.
 func (c Chain) IsProtein() bool {
-	return c.SeqType == SeqProtein
+	return c.SeqType == SeqProtein && len(c.Models) > 0
 }
 
 // SequenceCaAtomSlice attempts to extract a contiguous slice of alpha-carbon
