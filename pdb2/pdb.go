@@ -17,13 +17,25 @@ type pdbParser struct {
 	entry    *Entry
 	curModel int
 	line     []byte
-	modified map[modification]string
+	modified map[string]string
 	seqres   map[byte][]string
+
+	missing map[byte][]missingResidue
+	r465    bool
+
+	processed map[seen]bool
+	lastSeen  seen
 }
 
-type modification struct {
-	chainIdent byte
-	from       string
+type missingResidue struct {
+	residue string
+	seqNum  int
+	insCode byte
+}
+
+type seen struct {
+	chain byte
+	model int
 }
 
 func ReadPDB(fp string) (*Entry, error) {
@@ -45,7 +57,7 @@ func ReadPDB(fp string) (*Entry, error) {
 
 	entry := &Entry{
 		Path:   fp,
-		Chains: make([]Chain, 0),
+		Chains: make([]*Chain, 0),
 	}
 
 	// Now traverse each line, and process it according to the record name.
@@ -56,11 +68,15 @@ func ReadPDB(fp string) (*Entry, error) {
 	// sorting on ATOM serial number isn't good enough.)
 	breader := bufio.NewReaderSize(reader, 1000)
 	parser := pdbParser{
-		entry:    entry,
-		curModel: 1,
-		line:     nil,
-		modified: make(map[modification]string, 5),
-		seqres:   make(map[byte][]string, 2),
+		entry:     entry,
+		curModel:  1,
+		line:      nil,
+		modified:  make(map[string]string),
+		seqres:    make(map[byte][]string),
+		missing:   make(map[byte][]missingResidue),
+		r465:      false,
+		processed: make(map[seen]bool),
+		lastSeen:  seen{0, 0},
 	}
 	for {
 		// We ignore 'isPrefix' here, since we never care about lines longer
@@ -81,11 +97,32 @@ func ReadPDB(fp string) (*Entry, error) {
 	// abbreviations.
 	// We didn't do this before, because the MODRES records typically come
 	// afterwards. Ug.
-	for i := range parser.entry.Chains {
-		chain := &parser.entry.Chains[i]
+	for _, chain := range parser.entry.Chains {
 		for _, r := range parser.seqres[chain.Ident] {
-			newr := parser.residueAbbrev(chain.Ident, r)
+			newr, err := parser.residueAbbrev(r)
+			if err != nil {
+				return nil, fmt.Errorf("PDB (SEQRES) '%s': %s",
+					parser.entry.Path, err)
+			}
 			chain.Sequence = append(chain.Sequence, newr)
+		}
+	}
+
+	// We also need to translate the missing residues.
+	for _, chain := range parser.entry.Chains {
+		for _, r := range parser.missing[chain.Ident] {
+			abbrev, err := parser.residueAbbrev(r.residue)
+			if err != nil {
+				return nil, fmt.Errorf("PDB (REMARK 465) '%s': %s",
+					parser.entry.Path, err)
+			}
+			newr := &Residue{
+				Name:          abbrev,
+				SequenceNum:   r.seqNum,
+				InsertionCode: r.insCode,
+				Atoms:         nil,
+			}
+			chain.Missing = append(chain.Missing, newr)
 		}
 	}
 
@@ -123,11 +160,41 @@ func (p *pdbParser) parseLine() error {
 	case "SEQRES":
 		p.parseSeqres()
 	case "MODRES":
-		mod := modification{p.at(17), p.cols(13, 15)}
-		p.modified[mod] = p.cols(25, 27)
+		residue := p.cols(25, 27)
+		if len(residue) == 0 {
+			residue = "UNK"
+		}
+		p.modified[p.cols(13, 15)] = residue
+	case "HET":
+		residue := p.cols(8, 10)
+
+		// Only add this if there isn't a MODRES for this residue.
+		if _, ok := p.modified[residue]; !ok {
+			p.modified[residue] = "UNK"
+		}
 	case "ATOM":
+		fallthrough
+	case "HETATM":
 		if err := p.parseAtom(); err != nil {
 			return err
+		}
+	case "TER":
+		// Whatever ATOM record we saw last will have its {chain, model}
+		// added to the 'processed' map. This effectively disallows any further
+		// additions to this particular {chain, model}.
+		// This cuts off HETATM's after "TER", but I'm fine with that for now.
+		// fmt.Printf("%c %d\n", p.lastSeen.chain, p.lastSeen.model)
+		p.processed[p.lastSeen] = true
+	case "REMARK":
+		num, err := p.atoi(8, 10)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 465:
+			if err := p.parseRemark465(); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -153,17 +220,40 @@ func (p pdbParser) parseSeqres() {
 	}
 }
 
-func (p pdbParser) parseAtom() error {
+func (p *pdbParser) parseAtom() error {
 	ident := p.at(22)
+
+	// If we've already processed this {chain, model}, then don't look
+	// for more ATOMs.
+	if p.processed[seen{ident, p.curModel}] {
+		return nil
+	}
+
 	res := p.cols(18, 20)
+	if res == "HOH" { // ignore water HETATMs
+		return nil
+	}
+
+	insCode := p.at(27)
+	if insCode == ' ' {
+		insCode = 0
+	}
+
 	seqNum, err := p.atoi(23, 26)
 	if err != nil {
 		return err
 	}
 
-	residue := p.getResidue(ident, res, seqNum)
+	// If this is a HETATM, we often see weird residues, so we'll suppress an
+	// error if we don't recognize the residue. The residue will be set to 'X'.
+	flexible := p.cols(1, 6) == "HETATM"
+	residue, err := p.getResidue(ident, res, seqNum, insCode, flexible)
+	if err != nil {
+		return err
+	}
 	atom := Atom{
-		Name: p.cols(13, 16),
+		Name:   p.cols(13, 16),
+		Coords: Coords{},
 	}
 
 	atom.X, err = p.atof(31, 38)
@@ -179,59 +269,106 @@ func (p pdbParser) parseAtom() error {
 		return err
 	}
 
+	p.lastSeen = seen{ident, p.curModel}
 	residue.Atoms = append(residue.Atoms, atom)
 	return nil
 }
 
-func (p pdbParser) getChain(ident byte) *Chain {
+func (p *pdbParser) parseRemark465() error {
+	residue := p.cols(16, 18)
+
+	if residue == "RES" && p.at(20) == 'C' && p.cols(22, 27) == "SSSEQI" {
+		p.r465 = true
+		return nil
+	}
+	if !p.r465 {
+		return nil
+	}
+	if p.r465 && (len(residue) == 0 || len(residue) > 3) {
+		p.r465 = false
+		return nil
+	}
+
+	chainIdent := p.at(20)
+
+	seqNum, err := p.atoi(22, 26)
+	if err != nil {
+		return err
+	}
+
+	insCode := p.at(27)
+	if insCode == ' ' {
+		insCode = 0
+	}
+
+	if _, ok := p.missing[chainIdent]; !ok {
+		p.missing[chainIdent] = make([]missingResidue, 0)
+	}
+	missing := missingResidue{residue, seqNum, insCode}
+	p.missing[chainIdent] = append(p.missing[chainIdent], missing)
+	return nil
+}
+
+func (p *pdbParser) getChain(ident byte) *Chain {
 	for i, chain := range p.entry.Chains {
 		if chain.Ident == ident {
-			return &p.entry.Chains[i]
+			return p.entry.Chains[i]
 		}
 	}
-	chain := Chain{
+	chain := &Chain{
 		Entry:    p.entry,
 		Ident:    ident,
 		SeqType:  -1,
 		Sequence: make([]seq.Residue, 0, 25),
-		Models:   make([]Model, 0, 1),
+		Models:   make([]*Model, 0),
+		Missing:  make([]*Residue, 0),
 	}
 	p.entry.Chains = append(p.entry.Chains, chain)
-	return &p.entry.Chains[len(p.entry.Chains)-1]
+	return chain
 }
 
 func (p pdbParser) getModel(ident byte) *Model {
 	chain := p.getChain(ident)
 	for i, model := range chain.Models {
 		if model.Num == p.curModel {
-			return &chain.Models[i]
+			return chain.Models[i]
 		}
 	}
-	model := Model{
+
+	model := &Model{
 		Entry:    p.entry,
 		Chain:    chain,
 		Num:      p.curModel,
-		Residues: make([]Residue, 0, 25),
+		Residues: make([]*Residue, 0, 25),
 	}
 	chain.Models = append(chain.Models, model)
-	return &chain.Models[len(chain.Models)-1]
+	return model
 }
 
-func (p pdbParser) getResidue(ident byte, res string, seqNum int) *Residue {
+func (p pdbParser) getResidue(ident byte,
+	res string, seqNum int, insCode byte, flexible bool) (*Residue, error) {
+
 	model := p.getModel(ident)
-	for i, residue := range model.Residues {
-		if residue.SequenceNum == seqNum {
-			return &model.Residues[i]
+	for i := range model.Residues {
+		if model.Residues[i].SequenceNum == seqNum &&
+			model.Residues[i].InsertionCode == insCode {
+
+			return model.Residues[i], nil
 		}
 	}
-	residue := Residue{
-		Name:         p.residueAbbrev(model.Chain.Ident, res),
-		SequenceNum:  seqNum,
-		ResidueIndex: -1,
-		Atoms:        make([]Atom, 0, 4),
+	abbrev, err := p.residueAbbrev(res)
+	if !flexible && err != nil {
+		return nil, fmt.Errorf("PDB (ATOM) '%s': %s", p.entry.Path, err)
+	}
+
+	residue := &Residue{
+		Name:          abbrev,
+		SequenceNum:   seqNum,
+		InsertionCode: insCode,
+		Atoms:         make([]Atom, 0, 2),
 	}
 	model.Residues = append(model.Residues, residue)
-	return &model.Residues[len(model.Residues)-1]
+	return residue, nil
 }
 
 func (p pdbParser) atoi(start, end int) (int, error) {
@@ -261,9 +398,24 @@ func (p pdbParser) at(column int) byte {
 	return p.line[i]
 }
 
-func (p pdbParser) residueAbbrev(chainIdent byte, long string) seq.Residue {
-	if res, ok := p.modified[modification{chainIdent, long}]; ok {
+func (p pdbParser) residueAbbrev(long string) (seq.Residue, error) {
+	if res, ok := p.modified[long]; ok {
 		return getAbbrev(res)
 	}
-	return getAbbrev(long)
+	abbrev, err := getAbbrev(long)
+
+	// If we couldn't find a residue, check the missing residues. If this
+	// residue shows up there, let's just ignore it and return 'X'.
+	// If it isn't in the missing residues, then quit with an error.
+	if err != nil {
+		for _, missing := range p.missing {
+			for _, residue := range missing {
+				if residue.residue == long {
+					return 'X', nil
+				}
+			}
+		}
+		return 'X', err
+	}
+	return abbrev, nil
 }

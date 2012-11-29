@@ -1,4 +1,5 @@
-Mapping SEQRES residues to ATOM records.
+Mapping SEQRES residues to ATOM records
+=======================================
 
 The idea is to use the info in REMARK 465. We make the following assumption:
 Every residue in SEQRES that is NOT present as an ATOM record has a 
@@ -39,4 +40,9 @@ sequence numbers, and gaps in the ATOM records on both ends of the query
 sequence *and* in the middle. (On several chains.) Note here that the negative 
 sequence numbers are OK; so long as they are consistent among themselves (i.e., 
 contiguous and increasing).
+
+
+See also
+========
+https://lists.sdsc.edu/pipermail/pdb-l/2010-February/005043.html
 

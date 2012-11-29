@@ -7,22 +7,33 @@ import (
 )
 
 var aminoMap = map[string]seq.Residue{
+	"UNK": 'X',
 	"ALA": 'A', "ARG": 'R', "ASN": 'N', "ASP": 'D', "CYS": 'C',
 	"GLU": 'E', "GLN": 'Q', "GLY": 'G', "HIS": 'H', "ILE": 'I',
 	"LEU": 'L', "LYS": 'K', "MET": 'M', "PHE": 'F', "PRO": 'P',
 	"SER": 'S', "THR": 'T', "TRP": 'W', "TYR": 'Y', "VAL": 'V',
-	"SEC": 'U', "PYL": 'O',
-	"UNK": 'X', "ACE": 'X', "NH2": 'X',
-	"ASX": 'X', "GLX": 'X',
-	"MSE": 'M', "CSA": 'C', "LLP": 'K', "CSW": 'C', "STE": 'X',
+
+	// Residues that are not classified as "missing" and are not
+	// listed in MODRES.
+	"ASX": 'X', "GLX": 'X', "DLE": 'X',
+
+	// these are nucleotides. grrr.
+	"DOP": 'X',
+	"8OG": 'X',
+
+	// misc
+	"NH2": 'X',
 }
 
 var deoxyMap = map[string]seq.Residue{
-	"DA": 'A', "DC": 'C', "DG": 'T', "DI": 'I',
+	"DA": 'A', "DC": 'C', "DG": 'G', "DT": 'T', "DI": 'I', "DU": 'U',
 }
 
 var riboMap = map[string]seq.Residue{
-	"A": 'A', "C": 'C', "G": 'G', "U": 'U', "I": 'I',
+	"A": 'A', "C": 'C', "G": 'G', "U": 'U', "I": 'I', "T": 'T',
+
+	// wtf?
+	"N": 'X',
 }
 
 type SequenceType int
@@ -45,7 +56,7 @@ func (typ SequenceType) String() string {
 	panic(fmt.Sprintf("Unknown sequence type: %d", typ))
 }
 
-func getAbbrev(abbrev string) seq.Residue {
+func getAbbrev(abbrev string) (seq.Residue, error) {
 	typ := getAbbrevType(abbrev)
 	switch typ {
 	case SeqProtein:
@@ -71,23 +82,23 @@ func getAbbrevType(abbrev string) SequenceType {
 		abbrev, len(abbrev)))
 }
 
-func getAmino(threeAbbrev string) seq.Residue {
+func getAmino(threeAbbrev string) (seq.Residue, error) {
 	if v, ok := aminoMap[threeAbbrev]; ok {
-		return v
+		return v, nil
 	}
-	return 'X'
+	return 'X', fmt.Errorf("Unknown amino residue: %s", threeAbbrev)
 }
 
-func getDeoxy(twoAbbrev string) seq.Residue {
+func getDeoxy(twoAbbrev string) (seq.Residue, error) {
 	if v, ok := deoxyMap[twoAbbrev]; ok {
-		return v
+		return v, nil
 	}
-	return 'X'
+	return 'X', fmt.Errorf("Unknown deoxy residue: %s", twoAbbrev)
 }
 
-func getRibo(oneAbbrev string) seq.Residue {
+func getRibo(oneAbbrev string) (seq.Residue, error) {
 	if v, ok := riboMap[oneAbbrev]; ok {
-		return v
+		return v, nil
 	}
-	return 'X'
+	return 'X', fmt.Errorf("Unknown ribo residue: %s", oneAbbrev)
 }
