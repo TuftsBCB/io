@@ -9,4 +9,4 @@ Anything in a PDB file that isn't protein related is ignored.
 
 The 'Entry' type defined here is used in several places throughout bcbgo.
 */
-package pdb
+package pdbold

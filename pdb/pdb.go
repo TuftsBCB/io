@@ -2,74 +2,53 @@ package pdb
 
 import (
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"fmt"
 	"io"
 	"os"
 	"path"
 	"strconv"
-	"strings"
 
 	"github.com/BurntSushi/bcbgo/seq"
 )
 
-// AminoThreeToOne is a map from three letter amino acids to their
-// corresponding single letter representation.
-var AminoThreeToOne = map[string]byte{
-	"ALA": 'A', "ARG": 'R', "ASN": 'N', "ASP": 'D', "CYS": 'C',
-	"GLU": 'E', "GLN": 'Q', "GLY": 'G', "HIS": 'H', "ILE": 'I',
-	"LEU": 'L', "LYS": 'K', "MET": 'M', "PHE": 'F', "PRO": 'P',
-	"SER": 'S', "THR": 'T', "TRP": 'W', "TYR": 'Y', "VAL": 'V',
-	"SEC": 'U', "PYL": 'O',
-	"UNK": 'X', "ACE": 'X', "NH2": 'X',
-	"ASX": 'X', "GLX": 'X',
-	"MSE": 'M', "CSA": 'C', "LLP": 'K', "CSW": 'C', "STE": 'X',
+type pdbParser struct {
+	entry    *Entry
+	curModel int
+	line     []byte
+	modified map[string]string
+	seqres   map[byte][]string
+
+	missing map[byte][]missingResidue
+	r465    bool
+
+	processed map[seen]bool
+	lastSeen  seen
 }
 
-// AminoOneToThree is the reverse of AminoThreeToOne. It is created in
-// this packages 'init' function.
-var AminoOneToThree = map[byte]string{}
-
-func getThreeToOne(threeAbbrev string) byte {
-	if v, ok := AminoThreeToOne[threeAbbrev]; ok {
-		return v
-	}
-	return 'X'
+type missingResidue struct {
+	residue string
+	seqNum  int
+	insCode byte
 }
 
-func init() {
-	// Create a reverse map of AminoThreeToOne.
-	for k, v := range AminoThreeToOne {
-		AminoOneToThree[v] = k
-	}
+type seen struct {
+	chain byte
+	model int
 }
 
-// Entry represents all information known about a particular PDB file (that
-// has been implemented in this package).
-//
-// Currently, a PDB entry is simply a file path and a map of protein chains.
-type Entry struct {
-	Path           string
-	IdCode         string
-	Classification string
-	Chains         []*Chain
-}
-
-// New creates a new PDB Entry from a file. If the file cannot be read, or there
-// is an error parsing the PDB file, an error is returned.
-//
-// If the file name ends with ".gz", gzip decompression will be used.
-func New(fileName string) (*Entry, error) {
+func ReadPDB(fp string) (*Entry, error) {
 	var reader io.Reader
 	var err error
 
-	reader, err = os.Open(fileName)
+	reader, err = os.Open(fp)
 	if err != nil {
 		return nil, err
 	}
 
 	// If the file is gzipped, use the gzip decompressor.
-	if path.Ext(fileName) == ".gz" {
+	if path.Ext(fp) == ".gz" {
 		reader, err = gzip.NewReader(reader)
 		if err != nil {
 			return nil, err
@@ -77,7 +56,7 @@ func New(fileName string) (*Entry, error) {
 	}
 
 	entry := &Entry{
-		Path:   fileName,
+		Path:   fp,
 		Chains: make([]*Chain, 0),
 	}
 
@@ -88,38 +67,74 @@ func New(fileName string) (*Entry, error) {
 	// information from the PDB file; like differentiating models, since
 	// sorting on ATOM serial number isn't good enough.)
 	breader := bufio.NewReaderSize(reader, 1000)
+	parser := pdbParser{
+		entry:     entry,
+		curModel:  1,
+		line:      nil,
+		modified:  make(map[string]string),
+		seqres:    make(map[byte][]string),
+		missing:   make(map[byte][]missingResidue),
+		r465:      false,
+		processed: make(map[seen]bool),
+		lastSeen:  seen{0, 0},
+	}
 	for {
 		// We ignore 'isPrefix' here, since we never care about lines longer
 		// than 1000 characters, which is the size of our buffer.
 		line, _, err := breader.ReadLine()
-		if err == io.EOF {
+		if err == io.EOF && len(line) == 0 {
 			break
-		} else if err != nil {
+		} else if err != io.EOF && err != nil {
 			return nil, err
 		}
+		parser.line = line
+		if err := parser.parseLine(); err != nil {
+			return nil, err
+		}
+	}
 
-		// The record name is always in the fix six columns.
-		switch strings.TrimSpace(string(line[0:6])) {
-		case "HEADER":
-			if err := entry.parseHeader(line); err != nil {
-				return nil, err
+	// We've got to back and translate SEQRES residues to their single-letter
+	// abbreviations.
+	// We didn't do this before, because the MODRES records typically come
+	// afterwards. Ug.
+	for _, chain := range parser.entry.Chains {
+		for _, r := range parser.seqres[chain.Ident] {
+			newr, err := parser.residueAbbrev(r)
+			if err != nil {
+				return nil, fmt.Errorf("PDB (SEQRES) '%s': %s",
+					parser.entry.Path, err)
 			}
-		case "SEQRES":
-			entry.parseSeqres(line)
-		case "ATOM":
-			entry.parseAtom(line)
+			chain.Sequence = append(chain.Sequence, newr)
+		}
+	}
+
+	// We also need to translate the missing residues.
+	for _, chain := range parser.entry.Chains {
+		for _, r := range parser.missing[chain.Ident] {
+			abbrev, err := parser.residueAbbrev(r.residue)
+			if err != nil {
+				return nil, fmt.Errorf("PDB (REMARK 465) '%s': %s",
+					parser.entry.Path, err)
+			}
+			newr := &Residue{
+				Name:          abbrev,
+				SequenceNum:   r.seqNum,
+				InsertionCode: r.insCode,
+				Atoms:         nil,
+			}
+			chain.Missing = append(chain.Missing, newr)
 		}
 	}
 
 	// If we didn't pick up any chains, this probably isn't a valid PDB file.
 	if len(entry.Chains) == 0 {
 		return nil, fmt.Errorf("The file '%s' does not appear to be a valid "+
-			"PDB file.", fileName)
+			"PDB file.", entry.Path)
 	}
 
 	// If we couldn't find an Id code, inspect the base name of the file path.
 	if len(entry.IdCode) == 0 {
-		name := path.Base(fileName)
+		name := path.Base(entry.Path)
 		switch {
 		case len(name) >= 7 && name[0:3] == "pdb":
 			entry.IdCode = name[3:7]
@@ -131,273 +146,277 @@ func New(fileName string) (*Entry, error) {
 	return entry, nil
 }
 
-// Chain looks for the chain with identifier ident and returns it. 'nil' is
-// returned if the chain could not be found.
-func (e *Entry) Chain(ident byte) *Chain {
-	for _, chain := range e.Chains {
-		if chain.Ident == ident {
-			return chain
+func (p *pdbParser) parseLine() error {
+	var err error
+
+	switch p.cols(1, 6) {
+	case "HEADER":
+		p.entry.IdCode = p.cols(63, 66)
+	case "MODEL":
+		p.curModel, err = p.atoi(11, 14)
+		if err != nil {
+			return err
 		}
-	}
-	return nil
-}
-
-// OneChain returns a single chain in the PDB file. If there is more than one
-// chain, OneChain will panic. This is convenient when you expect a PDB file to
-// have only a single chain, but don't know the name.
-func (e *Entry) OneChain() *Chain {
-	if len(e.Chains) != 1 {
-		panic(fmt.Sprintf("OneChain can only be called on PDB entries with "+
-			"ONE chain. But the '%s' PDB entry has %d chains.",
-			e.Path, len(e.Chains)))
-	}
-	return e.Chains[0]
-}
-
-// Name returns the base name of the path of this PDB entry.
-func (e *Entry) Name() string {
-	return path.Base(e.Path)
-}
-
-// String returns a list of all chains, their residue start/stop indices,
-// and the amino acid sequence.
-func (e *Entry) String() string {
-	lines := make([]string, 0)
-	for _, chain := range e.Chains {
-		lines = append(lines, chain.String())
-	}
-	return strings.Join(lines, "\n")
-}
-
-// getOrMakeChain looks for a chain in the 'Chains' slice corresponding to the
-// chain indentifier. If one exists, it is returned. If one doesn't exist,
-// it is created, memory is allocated and it is returned.
-func (e *Entry) getOrMakeChain(ident byte) *Chain {
-	if ident == ' ' {
-		ident = '_'
-	}
-
-	chain := e.Chain(ident)
-	if chain != nil {
-		return chain
-	}
-	newChain := &Chain{
-		Entry:            e,
-		Ident:            ident,
-		Sequence:         make([]seq.Residue, 0, 30),
-		AtomResidueStart: 0,
-		AtomResidueEnd:   0,
-		CaAtoms:          make(Atoms, 0, 30),
-		CaSequence:       make([]seq.Residue, 0, 30),
-		CaSeqRes:         make([]*Atom, 0, 30),
-	}
-	e.Chains = append(e.Chains, newChain)
-	return newChain
-}
-
-// parseHeader loads the "idCode" and "classification" fields from the
-// header record.
-//
-// If the fields are already filled, then we've seen a second header record
-// and therefore report an error.
-func (e *Entry) parseHeader(line []byte) error {
-	if len(e.Classification) > 0 || len(e.IdCode) > 0 {
-		return fmt.Errorf("More than one HEADER record was found.")
-	}
-	e.Classification = strings.TrimSpace(string(line[10:50]))
-	e.IdCode = strings.TrimSpace(string(line[62:66]))
-	return nil
-}
-
-// parseSeqres loads all pertinent information from SEQRES records in a PDB
-// file. In particular, amino acid resides are read and added to the chain's
-// "Sequence" field. If a residue isn't a valid amino acid, it is simply
-// ignored.
-//
-// N.B. This assumes that the SEQRES records are in order in the PDB file.
-func (e *Entry) parseSeqres(line []byte) {
-	chain := e.getOrMakeChain(line[11])
-
-	// Residues are in columns 19-21, 23-25, 27-29, ..., 67-69
-	for i := 19; i <= 67; i += 4 {
-		end := i + 3
-
-		// If we're passed the end of this line, quit.
-		if end >= len(line) {
-			break
-		}
-
-		// Get the residue. If it's not in our sequence map, skip it.
-		residue := strings.TrimSpace(string(line[i:end]))
+	case "SEQRES":
+		p.parseSeqres()
+	case "MODRES":
+		residue := p.cols(25, 27)
 		if len(residue) == 0 {
-			break
+			residue = "UNK"
 		}
-		single := getThreeToOne(residue)
-		chain.Sequence = append(chain.Sequence, seq.Residue(single))
-		chain.CaSeqRes = append(chain.CaSeqRes, nil)
-	}
-}
+		p.modified[p.cols(13, 15)] = residue
+	case "HET":
+		residue := p.cols(8, 10)
 
-// parseAtom loads all pertinent information from ATOM records in a PDB file.
-// Currently, this only includes deducing the amino acid residue start and
-// stop indices. (Note that the length of the range is not necessarily
-// equivalent to the length of the amino acid sequence found in the SEQRES
-// records.)
-//
-// ATOM records without a valid amino acid residue in columns 18-20 are ignored.
-func (e *Entry) parseAtom(line []byte) {
-	chain := e.getOrMakeChain(line[21])
-
-	// An ATOM record is only processed if it corresponds to an amino acid
-	// residue. (Which is in columns 17-19.)
-	residue := strings.TrimSpace(string(line[17:20]))
-	if _, ok := AminoThreeToOne[residue]; !ok {
-		// Sanity check. I'm pretty sure that only amino acids have three
-		// letter abbreviations.
-		if len(residue) == 3 {
-			panic(fmt.Sprintf("The residue '%s' found in PDB file '%s' has "+
-				"length 3, but is not in my amino acid map.",
-				residue, e.Path))
+		// Only add this if there isn't a MODRES for this residue.
+		if _, ok := p.modified[residue]; !ok {
+			p.modified[residue] = "UNK"
 		}
-		return
-	}
-
-	// The residue sequence number is in columns 22-25. Grab it, trim it,
-	// and look for an integer.
-	snum := strings.TrimSpace(string(line[22:26]))
-	inum := int(0)
-	if num, err := strconv.ParseInt(snum, 10, 32); err == nil {
-		inum = int(num)
-		switch {
-		case chain.AtomResidueStart == 0 || inum < chain.AtomResidueStart:
-			chain.AtomResidueStart = inum
-		case chain.AtomResidueEnd == 0 || inum > chain.AtomResidueEnd:
-			chain.AtomResidueEnd = inum
+	case "ATOM":
+		fallthrough
+	case "HETATM":
+		if err := p.parseAtom(); err != nil {
+			return err
 		}
-	}
-
-	// Build an Atom value. We need the serial number from columns 6-10,
-	// the atom name from columns 12-15, the amino acid residue from
-	// columns 17-19 (we already have that: 'residue'), the residue sequence
-	// number from columns 22-25 (already have that too: 'inum'), and the
-	// three dimension coordinates in columns 30-37 (x), 38-45 (y), and
-	// 46-53 (z).
-	atom := Atom{
-		Name:       strings.TrimSpace(string(line[12:16])),
-		Residue:    residue,
-		ResidueInd: inum,
-		Coords:     [3]float64{},
-	}
-
-	serialStr := strings.TrimSpace(string(line[6:11]))
-	if serial64, err := strconv.ParseInt(serialStr, 10, 32); err == nil {
-		atom.Serial = int(serial64)
-	}
-
-	xstr := strings.TrimSpace(string(line[30:38]))
-	ystr := strings.TrimSpace(string(line[38:46]))
-	zstr := strings.TrimSpace(string(line[46:54]))
-	if x64, err := strconv.ParseFloat(xstr, 64); err == nil {
-		atom.Coords[0] = x64
-	}
-	if y64, err := strconv.ParseFloat(ystr, 64); err == nil {
-		atom.Coords[1] = y64
-	}
-	if z64, err := strconv.ParseFloat(zstr, 64); err == nil {
-		atom.Coords[2] = z64
-	}
-
-	// Now add our atom to the chain.
-	chain.Atoms = append(chain.Atoms, atom)
-	if atom.Name == "CA" {
-		r := seq.Residue(getThreeToOne(residue))
-		chain.CaAtoms = append(chain.CaAtoms, atom)
-		chain.CaSequence = append(chain.CaSequence, r)
-
-		// If we have a valid residue number, then add this atom into our
-		// CaSeqRes list. Which is a correspondence between residues and
-		// *maybe* atoms.
-		if inum > 0 && inum-1 < len(chain.CaSeqRes) {
-			if chain.Sequence[inum-1] == r {
-				chain.CaSeqRes[inum-1] = &atom
+	case "TER":
+		// Whatever ATOM record we saw last will have its {chain, model}
+		// added to the 'processed' map. This effectively disallows any further
+		// additions to this particular {chain, model}.
+		// This cuts off HETATM's after "TER", but I'm fine with that for now.
+		// fmt.Printf("%c %d\n", p.lastSeen.chain, p.lastSeen.model)
+		p.processed[p.lastSeen] = true
+	case "REMARK":
+		num, err := p.atoi(8, 10)
+		if err != nil {
+			return err
+		}
+		switch num {
+		case 465:
+			if err := p.parseRemark465(); err != nil {
+				return err
 			}
 		}
 	}
+	return nil
 }
 
-// Chain represents a protein chain or subunit in a PDB file. Each chain has
-// its own identifier, amino acid sequence (if its a protein sequence), and
-// the start and stop residue indices of the ATOM coordinates.
-//
-// It also contains a slice of all carbon-alpha ATOM records corresponding
-// to an amino acid.
-type Chain struct {
-	Entry                            *Entry
-	Ident                            byte
-	Sequence                         []seq.Residue
-	AtomResidueStart, AtomResidueEnd int
-	Atoms                            Atoms
-	CaAtoms                          Atoms
-	CaSequence                       []seq.Residue
-	CaSeqRes                         []*Atom
-}
-
-// ValidProtein returns true when there are ATOM records corresponding to
-// a protein backbone.
-func (c *Chain) ValidProtein() bool {
-	return c.AtomResidueStart != c.AtomResidueEnd
-}
-
-// String returns a FASTA-like formatted string of this chain and all of its
-// related information.
-func (c *Chain) String() string {
-	return strings.TrimSpace(
-		fmt.Sprintf("> Chain %c (%d, %d) :: length %d\n%s",
-			c.Ident, c.AtomResidueStart, c.AtomResidueEnd,
-			len(c.Sequence), c.Sequence))
-}
-
-// CaAtomSlice attempts to extract a contiguous slice of alpha-carbon ATOM
-// records based on *residue* index. Namely, if a contiguous slice cannot be
-// found, nil is returned.
-func (c *Chain) CaAtomSlice(start, end int) Atoms {
-	atoms := make(Atoms, end-start)
-	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
-		if c.CaSeqRes[cai] == nil {
-			return nil
+func (p pdbParser) parseSeqres() {
+	chain := p.getChain(p.at(12))
+	if _, ok := p.seqres[chain.Ident]; !ok {
+		p.seqres[chain.Ident] = make([]string, 0, 25)
+	}
+	for c := 20; c <= 68; c += 4 {
+		res := p.cols(c, c+2)
+		if len(res) == 0 {
+			break
 		}
-		atoms[i] = *c.CaSeqRes[cai]
+		if chain.SeqType == -1 {
+			// Label the sequence type if we haven't yet.
+			// This basically just looks at the length of the unabbreviated
+			// residue. len of 3 = protein, len of 2 = deoxy, len of 1 = ribo.
+			chain.SeqType = getAbbrevType(res)
+		}
+		p.seqres[chain.Ident] = append(p.seqres[chain.Ident], res)
 	}
-	return atoms
 }
 
-// Atom contains information about an ATOM record, including the serial
-// number, the residue (and residue sequence number), the atom name and the
-// three dimensional coordinates.
-type Atom struct {
-	Serial     int
-	Name       string
-	ResidueInd int
-	Residue    string
+func (p *pdbParser) parseAtom() error {
+	ident := p.at(22)
 
-	// Coords is a triple where the first element is X, the second is Y and
-	// the third is Z.
-	Coords [3]float64
-}
-
-func (a Atom) String() string {
-	return fmt.Sprintf("(%d, %s, %d, %s, [%0.4f %0.4f %0.4f])",
-		a.Serial, a.Name, a.ResidueInd, a.Residue,
-		a.Coords[0], a.Coords[1], a.Coords[2])
-}
-
-// Atoms names a slice of Atom for sorting.
-type Atoms []Atom
-
-func (as Atoms) String() string {
-	lines := make([]string, len(as))
-	for i, atom := range as {
-		lines[i] = atom.String()
+	// If we've already processed this {chain, model}, then don't look
+	// for more ATOMs.
+	if p.processed[seen{ident, p.curModel}] {
+		return nil
 	}
-	return strings.Join(lines, "\n")
+
+	res := p.cols(18, 20)
+	if res == "HOH" { // ignore water HETATMs
+		return nil
+	}
+
+	insCode := p.at(27)
+	if insCode == ' ' {
+		insCode = 0
+	}
+
+	seqNum, err := p.atoi(23, 26)
+	if err != nil {
+		return err
+	}
+
+	// If this is a HETATM, we often see weird residues, so we'll suppress an
+	// error if we don't recognize the residue. The residue will be set to 'X'.
+	flexible := p.cols(1, 6) == "HETATM"
+	residue, err := p.getResidue(ident, res, seqNum, insCode, flexible)
+	if err != nil {
+		return err
+	}
+	atom := Atom{
+		Name:   p.cols(13, 16),
+		Het:    p.cols(1, 6) == "HETATM",
+		Coords: Coords{},
+	}
+
+	atom.X, err = p.atof(31, 38)
+	if err != nil {
+		return err
+	}
+	atom.Y, err = p.atof(39, 46)
+	if err != nil {
+		return err
+	}
+	atom.Z, err = p.atof(47, 54)
+	if err != nil {
+		return err
+	}
+
+	p.lastSeen = seen{ident, p.curModel}
+	residue.Atoms = append(residue.Atoms, atom)
+	return nil
+}
+
+func (p *pdbParser) parseRemark465() error {
+	residue := p.cols(16, 18)
+
+	if residue == "RES" && p.at(20) == 'C' && p.cols(22, 27) == "SSSEQI" {
+		p.r465 = true
+		return nil
+	}
+	if !p.r465 {
+		return nil
+	}
+	if p.r465 && (len(residue) == 0 || len(residue) > 3) {
+		p.r465 = false
+		return nil
+	}
+
+	chainIdent := p.at(20)
+
+	seqNum, err := p.atoi(22, 26)
+	if err != nil {
+		return err
+	}
+
+	insCode := p.at(27)
+	if insCode == ' ' {
+		insCode = 0
+	}
+
+	if _, ok := p.missing[chainIdent]; !ok {
+		p.missing[chainIdent] = make([]missingResidue, 0)
+	}
+	missing := missingResidue{residue, seqNum, insCode}
+	p.missing[chainIdent] = append(p.missing[chainIdent], missing)
+	return nil
+}
+
+func (p *pdbParser) getChain(ident byte) *Chain {
+	for i, chain := range p.entry.Chains {
+		if chain.Ident == ident {
+			return p.entry.Chains[i]
+		}
+	}
+	chain := &Chain{
+		Entry:    p.entry,
+		Ident:    ident,
+		SeqType:  -1,
+		Sequence: make([]seq.Residue, 0, 25),
+		Models:   make([]*Model, 0),
+		Missing:  make([]*Residue, 0),
+	}
+	p.entry.Chains = append(p.entry.Chains, chain)
+	return chain
+}
+
+func (p pdbParser) getModel(ident byte) *Model {
+	chain := p.getChain(ident)
+	for i, model := range chain.Models {
+		if model.Num == p.curModel {
+			return chain.Models[i]
+		}
+	}
+
+	model := &Model{
+		Entry:    p.entry,
+		Chain:    chain,
+		Num:      p.curModel,
+		Residues: make([]*Residue, 0, 25),
+	}
+	chain.Models = append(chain.Models, model)
+	return model
+}
+
+func (p pdbParser) getResidue(ident byte,
+	res string, seqNum int, insCode byte, flexible bool) (*Residue, error) {
+
+	model := p.getModel(ident)
+	for i := range model.Residues {
+		if model.Residues[i].SequenceNum == seqNum &&
+			model.Residues[i].InsertionCode == insCode {
+
+			return model.Residues[i], nil
+		}
+	}
+	abbrev, err := p.residueAbbrev(res)
+	if !flexible && err != nil {
+		return nil, fmt.Errorf("PDB (ATOM) '%s': %s", p.entry.Path, err)
+	}
+
+	residue := &Residue{
+		Name:          abbrev,
+		SequenceNum:   seqNum,
+		InsertionCode: insCode,
+		Atoms:         make([]Atom, 0, 2),
+	}
+	model.Residues = append(model.Residues, residue)
+	return residue, nil
+}
+
+func (p pdbParser) atoi(start, end int) (int, error) {
+	return strconv.Atoi(p.cols(start, end))
+}
+
+func (p pdbParser) atof(start, end int) (float64, error) {
+	return strconv.ParseFloat(p.cols(start, end), 64)
+}
+
+func (p pdbParser) cols(start, end int) string {
+	rs, re := start-1, end
+	if rs >= len(p.line) || rs < 0 {
+		return ""
+	}
+	if re > len(p.line) || re < 0 || re < rs {
+		return ""
+	}
+	return string(bytes.TrimSpace(p.line[rs:re]))
+}
+
+func (p pdbParser) at(column int) byte {
+	i := column - 1
+	if i < 0 || i >= len(p.line) {
+		return 0
+	}
+	return p.line[i]
+}
+
+func (p pdbParser) residueAbbrev(long string) (seq.Residue, error) {
+	if res, ok := p.modified[long]; ok {
+		return getAbbrev(res)
+	}
+	abbrev, err := getAbbrev(long)
+
+	// If we couldn't find a residue, check the missing residues. If this
+	// residue shows up there, let's just ignore it and return 'X'.
+	// If it isn't in the missing residues, then quit with an error.
+	if err != nil {
+		for _, missing := range p.missing {
+			for _, residue := range missing {
+				if residue.residue == long {
+					return 'X', nil
+				}
+			}
+		}
+		return 'X', err
+	}
+	return abbrev, nil
 }

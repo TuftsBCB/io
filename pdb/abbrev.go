@@ -1,4 +1,4 @@
-package pdb2
+package pdb
 
 import (
 	"fmt"

@@ -1,4 +1,4 @@
-package pdb2
+package pdb
 
 import (
 	"fmt"
@@ -37,6 +37,7 @@ type Residue struct {
 
 type Atom struct {
 	Name string
+	Het  bool
 	Coords
 }
 
@@ -72,6 +73,14 @@ func (c Chain) IsProtein() bool {
 	return c.SeqType == SeqProtein
 }
 
+// SequenceCaAtomSlice attempts to extract a contiguous slice of alpha-carbon
+// ATOM records based on *residue* index. Namely, if a contiguous slice cannot
+// be found, nil is returned. If there is more than one model, the first model
+// is used.
+func (c Chain) SequenceCaAtomSlice(start, end int) []Coords {
+	return c.Models[0].SequenceCaAtomSlice(start, end)
+}
+
 // SequenceCaAtoms returns a slice of all Ca atoms for the chain in
 // correspondence with the sequence in SEQRES (automatically using the first
 // model).
@@ -95,6 +104,25 @@ func (c Chain) SequenceAtoms() ([]*Residue, error) {
 // one model, only the first model is used.
 func (c Chain) CaAtoms() []Coords {
 	return c.Models[0].CaAtoms()
+}
+
+// SequenceCaAtomSlice attempts to extract a contiguous slice of alpha-carbon
+// ATOM records based on *residue* index. Namely, if a contiguous slice cannot
+// be found, nil is returned.
+func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
+	residues, err := m.SequenceCaAtoms()
+	if err != nil {
+		return nil
+	}
+
+	atoms := make([]Coords, end-start)
+	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
+		if residues[start] == nil {
+			return nil
+		}
+		atoms[i] = *residues[cai]
+	}
+	return atoms
 }
 
 // SequenceCaAtoms returns a slice of all Ca atoms for the model in
@@ -148,11 +176,15 @@ func (m Model) SequenceAtoms() ([]*Residue, error) {
 }
 
 // CaAtoms returns all alpha-carbon atoms in the model.
+// This includes multiple alpha-carbon atoms belonging to the same residue.
+// It does not include HETATMs.
 func (m Model) CaAtoms() []Coords {
 	cas := make([]Coords, 0, len(m.Residues))
 	for _, r := range m.Residues {
-		if ca := r.Ca(); ca != nil {
-			cas = append(cas, *ca)
+		for _, atom := range r.Atoms {
+			if atom.Name == "CA" && !atom.Het {
+				cas = append(cas, atom.Coords)
+			}
 		}
 	}
 	return cas
