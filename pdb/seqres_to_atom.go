@@ -10,16 +10,19 @@ import (
 
 func (m Model) seqAtomsGuess() ([]*Residue, error) {
 	seqres := m.Chain.Sequence
+	mapping := make([]*Residue, len(seqres))
 	if len(seqres) != len(m.Residues) {
-		return nil, fmt.Errorf(
-			"PDB entry (%s, %c, %d) reports 0 missing residues and %d "+
-				"residues with ATOM records. But there are %d residues "+
-				"reported in the SEQRES records. Thus, no correspondence can "+
-				"be guessed. (Try global alignment? Eeek.)",
-			m.Entry.IdCode, m.Chain.Ident, m.Num, len(m.Residues), len(seqres))
+		// This is a last ditch effort. Use the ATOM sequence number as an
+		// index into the SEQRES residues.
+		for _, r := range m.Residues {
+			si := r.SequenceNum - 1
+			if si >= 0 && si < len(seqres) && seqres[si] == r.Name {
+				mapping[si] = r
+			}
+		}
+		return mapping, nil
 	}
 
-	mapping := make([]*Residue, len(seqres))
 	for i, r := range m.Residues {
 		if i < len(seqres) && seqres[i] == r.Name {
 			mapping[i] = r

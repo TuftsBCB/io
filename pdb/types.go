@@ -112,6 +112,7 @@ func (c Chain) CaAtoms() []Coords {
 func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
 	residues, err := m.SequenceCaAtoms()
 	if err != nil {
+		fmt.Printf("%s\n", err)
 		return nil
 	}
 
