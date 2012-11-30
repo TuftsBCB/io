@@ -5,11 +5,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
+	"strings"
 	"unicode"
 
 	"github.com/BurntSushi/bcbgo/seq"
 )
+
+var _ = log.Println
 
 type HHR struct {
 	Query        string
@@ -36,14 +40,21 @@ type Hit struct {
 	TemplateStart   int
 	TemplateEnd     int
 	NumTemplateCols int
+	Aligned         Alignment
+}
+
+type Alignment struct {
+	QSeq, QConsensus, QDssp, QPred, QConf []seq.Residue
+	TSeq, TConsensus, TDssp, TPred, TConf []seq.Residue
 }
 
 func Read(r io.Reader) (*HHR, error) {
-	bmeta, bhits := new(bytes.Buffer), new(bytes.Buffer)
-	mode := 1 // 1 for meta, 2 for hits
+	mode := 1 // 1 for meta, 2 for hits, 3 for alignments
+	bmeta := new(bytes.Buffer)
+	bhits := new(bytes.Buffer)
+	balign := new(bytes.Buffer)
 
 	buf := bufio.NewReader(r)
-MAIN:
 	for {
 		line, err := buf.ReadBytes('\n')
 		if err == io.EOF && len(line) == 0 {
@@ -66,18 +77,21 @@ MAIN:
 		// is complete and we quit.
 		switch {
 		case mode == 1 && len(line) == 0: // skip empty lines in meta data
-			continue MAIN
+			continue
 		case mode == 1 && hasPrefix(line, "No Hit"): // hit list begins
 			mode = 2
-			continue MAIN
-		case mode == 2 && len(line) == 0: // done with hit list
-			break MAIN
+			continue
+		case mode == 2 && len(line) == 0: // done with hit list, alignment time
+			mode = 3
+			continue
 		}
 		switch mode {
 		case 1: // meta data
 			_, err = bmeta.Write(append(line, '\n'))
 		case 2: // hit list
 			_, err = bhits.Write(append(line, '\n'))
+		case 3: // alignments
+			_, err = balign.Write(append(line, '\n'))
 		default:
 			panic(fmt.Sprintf("BUG: Unknown mode: %d", mode))
 		}
@@ -94,6 +108,10 @@ MAIN:
 	hhr.Hits, err = readHits(bhits)
 	if err != nil {
 		return nil, fmt.Errorf("Error reading hit list from hhr: %s", err)
+	}
+
+	if err = readAlignments(balign, hhr.Query, hhr.Hits); err != nil {
+		return nil, fmt.Errorf("Error reading alignments from hhr: %s", err)
 	}
 
 	return hhr, nil
@@ -234,7 +252,7 @@ func readHits(buf *bytes.Buffer) (hits []Hit, err error) {
 			return nil, err
 		}
 
-		numPart := rest[8][1 : len(rest[8])-1] // i.e., remove parens in '(52)'.
+		numPart := rest[8][0 : len(rest[8])-1] // i.e., remove parens in '(52)'.
 		hit.NumTemplateCols, err = strconv.Atoi(str(numPart))
 		if err != nil {
 			return nil, err
@@ -245,12 +263,108 @@ func readHits(buf *bytes.Buffer) (hits []Hit, err error) {
 	return hits, nil
 }
 
+func readAlignments(buf *bytes.Buffer, queryName string, hits []Hit) error {
+	hi := -1 // the current hit index
+	for {
+		line, err := buf.ReadBytes('\n')
+		if err == io.EOF && len(line) == 0 {
+			break
+		}
+		if err != nil && err != io.EOF {
+			return err
+		}
+		line = trim(line)
+		if len(line) == 0 {
+			continue
+		}
+
+		switch {
+		case hasPrefix(line, "No "):
+			hitno, err := strconv.Atoi(str(line[3:]))
+			if err != nil {
+				return err
+			}
+			hi = -1
+			for i := range hits {
+				if hits[i].Num == hitno {
+					hi = i
+					break
+				}
+			}
+			if hi == -1 {
+				return fmt.Errorf("Invalid hit number: %d\n", hi)
+			}
+			hits[hi].Aligned = Alignment{
+				QSeq:  make([]seq.Residue, 0),
+				QDssp: make([]seq.Residue, 0),
+				QPred: make([]seq.Residue, 0),
+				QConf: make([]seq.Residue, 0),
+				TSeq:  make([]seq.Residue, 0),
+				TDssp: make([]seq.Residue, 0),
+				TPred: make([]seq.Residue, 0),
+				TConf: make([]seq.Residue, 0),
+			}
+		case hasPrefix(line, ">"):
+			if !strings.HasPrefix(str(line[1:]), hits[hi].Name) {
+				return fmt.Errorf("Hit names don't match: '%s' != '%s'.",
+					str(line[1:]), hits[hi].Name)
+			}
+		case hasPrefix(line, "Q"): // query part of alignment
+			rest := line[2:]
+			aligned := &hits[hi].Aligned
+			switch {
+			case strings.HasPrefix(queryName, str(rest[0:14])):
+				aligned.QSeq = append(aligned.QSeq, getSeq(rest)...)
+			case hasPrefix(rest, "Consensus"):
+				aligned.QConsensus = append(aligned.QConsensus, getSeq(rest)...)
+			case hasPrefix(rest, "ss_dssp"):
+				aligned.QDssp = append(aligned.QDssp, getSeq(rest)...)
+			case hasPrefix(rest, "ss_pred"):
+				aligned.QPred = append(aligned.QPred, getSeq(rest)...)
+			case hasPrefix(rest, "ss_conf"):
+				aligned.QConf = append(aligned.QConf, getSeq(rest)...)
+			}
+		case hasPrefix(line, "T"): // template part of alignment
+			rest := line[2:]
+			aligned := &hits[hi].Aligned
+			switch {
+			case strings.HasPrefix(hits[hi].Name, str(rest[0:14])):
+				aligned.TSeq = append(aligned.TSeq, getSeq(rest)...)
+			case hasPrefix(rest, "Consensus"):
+				aligned.TConsensus = append(aligned.TConsensus, getSeq(rest)...)
+			case hasPrefix(rest, "ss_dssp"):
+				aligned.TDssp = append(aligned.TDssp, getSeq(rest)...)
+			case hasPrefix(rest, "ss_pred"):
+				aligned.TPred = append(aligned.TPred, getSeq(rest)...)
+			case hasPrefix(rest, "ss_conf"):
+				aligned.TConf = append(aligned.TConf, getSeq(rest)...)
+			}
+		}
+	}
+	return nil
+}
+
 func hasPrefix(bs []byte, prefix string) bool {
 	return bytes.HasPrefix(bs, []byte(prefix))
 }
 
 func trim(bs []byte) []byte {
 	return bytes.TrimSpace(bs)
+}
+
+func getSeq(line []byte) []seq.Residue {
+	fs := bytes.Fields(line[17:])
+	var fseq []byte
+	if len(fs) == 1 {
+		fseq = fs[0]
+	} else {
+		fseq = fs[1]
+	}
+	rs := make([]seq.Residue, len(fseq))
+	for i, r := range fseq {
+		rs[i] = seq.Residue(r)
+	}
+	return rs
 }
 
 func readFloat(bs []byte) (float64, error) {

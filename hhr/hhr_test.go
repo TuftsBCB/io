@@ -41,6 +41,8 @@ func ExampleRead() {
 	fmt.Println(hit.TemplateStart)
 	fmt.Println(hit.TemplateEnd)
 	fmt.Println(hit.NumTemplateCols)
+	fmt.Printf("%s\n", hit.Aligned.QSeq)
+	fmt.Printf("%s\n", hit.Aligned.TSeq)
 	// Output:
 	// 10
 	// 2fxaD
@@ -55,6 +57,8 @@ func ExampleRead() {
 	// 46
 	// 94
 	// 207
+	// IGNSAFELLLEVAKSGEKGINTMDLAQVTGQDPRSVTGRIKKINH--LLTS 
+	// LNINEHHILWIAY--QLNGASISEIAKFGVMHVSTAFNFSKKLEERGYLRF 
 }
 
 func getFile() *os.File {
