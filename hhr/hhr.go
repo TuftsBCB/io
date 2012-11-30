@@ -305,11 +305,6 @@ func readAlignments(buf *bytes.Buffer, queryName string, hits []Hit) error {
 				TPred: make([]seq.Residue, 0),
 				TConf: make([]seq.Residue, 0),
 			}
-		case hasPrefix(line, ">"):
-			if !strings.HasPrefix(str(line[1:]), hits[hi].Name) {
-				return fmt.Errorf("Hit names don't match: '%s' != '%s'.",
-					str(line[1:]), hits[hi].Name)
-			}
 		case hasPrefix(line, "Q"): // query part of alignment
 			rest := line[2:]
 			aligned := &hits[hi].Aligned
