@@ -28,6 +28,7 @@ type HHR struct {
 
 type Hit struct {
 	Num             int
+	Chunk           int
 	Name            string
 	Prob            float64
 	EValue          float64
