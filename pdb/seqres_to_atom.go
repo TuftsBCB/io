@@ -1,14 +1,12 @@
 package pdb
 
 import (
-	"bytes"
-	"fmt"
 	"unicode"
 
 	"github.com/BurntSushi/bcbgo/seq"
 )
 
-func (m Model) seqAtomsGuess() ([]*Residue, error) {
+func (m Model) seqAtomsGuess() []*Residue {
 	seqres := m.Chain.Sequence
 	mapping := make([]*Residue, len(seqres))
 	if len(seqres) != len(m.Residues) {
@@ -20,7 +18,7 @@ func (m Model) seqAtomsGuess() ([]*Residue, error) {
 				mapping[si] = r
 			}
 		}
-		return mapping, nil
+		return mapping
 	}
 
 	for i, r := range m.Residues {
@@ -28,60 +26,51 @@ func (m Model) seqAtomsGuess() ([]*Residue, error) {
 			mapping[i] = r
 		}
 	}
-	return mapping, nil
+	return mapping
+}
+
+func (m Model) seqAtomsAlign() []*Residue {
+	seqres := m.Chain.Sequence
+	atomResidues := make([]seq.Residue, len(m.Residues))
+	for i, r := range m.Residues {
+		atomResidues[i] = r.Name
+	}
+	aligned := seq.NeedlemanWunsch(seqres, atomResidues)
+
+	mapped := make([]*Residue, len(seqres))
+	atomi := 0
+	for i, r := range aligned.B {
+		if r == '-' {
+			mapped[i] = nil
+		} else {
+			mapped[i] = m.Residues[atomi]
+			atomi++
+		}
+	}
+	return mapped
 }
 
 // Attempts to accomplish the same thing as seqAtomsWithMissing, but instead
 // of mapping one residue at a time, we map *chunks* at a time. That is,
 // a chunk is any group of contiguous residues.
-func (m Model) seqAtomsChunksMerge() ([]*Residue, error) {
+func (m Model) seqAtomsChunksMerge() []*Residue {
 	seqres := m.Chain.Sequence
 
 	// Check to make sure that the total number of missing residues, plus the
 	// total number of ATOM record residues equal the total number of residues
 	// in the SEQRES records. Otherwise, the merge will fail.
 	if len(seqres) != len(m.Chain.Missing)+len(m.Residues) {
-		return nil, fmt.Errorf(
-			"PDB entry (%s, %c, %d) reports %d missing residues and %d "+
-				"residues with ATOM records. Combined, that's %d residues. "+
-				"But there are %d residues reported in the SEQRES records. "+
-				"Thus, no correspondence can be found. "+
-				"(Try global alignment? Eeek.)",
-			m.Entry.IdCode, m.Chain.Ident, m.Num,
-			len(m.Chain.Missing), len(m.Residues),
-			len(m.Chain.Missing)+len(m.Residues), len(seqres))
+		return m.seqAtomsAlign()
 	}
 
 	result := make([]*Residue, len(seqres))
 	mchunks := chunk(m.Chain.Missing, m.Residues)
 	fchunks := chunk(m.Residues, m.Chain.Missing)
 
+	// If the PDB file is corrupted, a merge will fail.
+	// So we fall back to alignment.
 	if ok := merge(result, 0, seqres, nil, mchunks, fchunks); !ok {
-		// This is tough to debug, so we give an elaborate error message.
-		buf := new(bytes.Buffer)
-		lg := func(format string, v ...interface{}) {
-			fmt.Fprintf(buf, format, v...)
-		}
-		lg("In (%s, %c, %d)\n\n", m.Entry.IdCode, m.Chain.Ident, m.Num)
-
-		lg("Missing chunks:\n")
-		for _, chunk := range mchunks {
-			lg("%s\n\n", residues(chunk))
-		}
-
-		lg("Filled chunks:\n")
-		for _, chunk := range fchunks {
-			lg("%s\n\n", residues(chunk))
-		}
-
-		lg("Here is the alignment that we have so far:\n\n")
-		lg("SEQRES:\n")
-		lg("%s\n\n", seqres)
-		lg("Gapped:\n")
-		lg("%s\n\n", residues(result))
-
-		lg("Could not align SEQRES residues with ATOM records.")
-		return nil, fmt.Errorf("%s", buf.String())
+		return m.seqAtomsAlign()
 	}
 
 	// X out any residues that don't have ATOM records.
@@ -90,7 +79,7 @@ func (m Model) seqAtomsChunksMerge() ([]*Residue, error) {
 			result[i] = nil
 		}
 	}
-	return result, nil
+	return result
 }
 
 func merge(result []*Residue, end int, seqres []seq.Residue,

@@ -14,10 +14,6 @@ import (
 	"github.com/BurntSushi/bcbgo/seq"
 )
 
-// look at:
-// 1aco
-// 3cfs
-
 var flagPdbDir = ""
 
 func init() {

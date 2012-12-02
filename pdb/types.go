@@ -86,7 +86,7 @@ func (c Chain) SequenceCaAtomSlice(start, end int) []Coords {
 // model).
 //
 // See Model.SequenceCaAtoms for the deets.
-func (c Chain) SequenceCaAtoms() ([]*Coords, error) {
+func (c Chain) SequenceCaAtoms() []*Coords {
 	return c.Models[0].SequenceCaAtoms()
 }
 
@@ -96,7 +96,7 @@ func (c Chain) SequenceCaAtoms() ([]*Coords, error) {
 // an ATOM record.
 //
 // See Model.SequenceCaAtoms for the deets.
-func (c Chain) SequenceAtoms() ([]*Residue, error) {
+func (c Chain) SequenceAtoms() []*Residue {
 	return c.Models[0].SequenceAtoms()
 }
 
@@ -110,12 +110,7 @@ func (c Chain) CaAtoms() []Coords {
 // ATOM records based on *residue* index. Namely, if a contiguous slice cannot
 // be found, nil is returned.
 func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
-	residues, err := m.SequenceCaAtoms()
-	if err != nil {
-		fmt.Printf("%s\n", err)
-		return nil
-	}
-
+	residues := m.SequenceCaAtoms()
 	atoms := make([]Coords, end-start)
 	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
 		if residues[cai] == nil {
@@ -149,19 +144,15 @@ func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
 //
 // In sum, a list of atom pointers is returned with length equal to the number
 // of residues in the SEQRES record for this model. Some pointers may be nil.
-func (m Model) SequenceCaAtoms() ([]*Coords, error) {
-	mapping, err := m.SequenceAtoms()
-	if err != nil {
-		return nil, err
-	}
-
+func (m Model) SequenceCaAtoms() []*Coords {
+	mapping := m.SequenceAtoms()
 	cas := make([]*Coords, len(mapping))
 	for i := range mapping {
 		if mapping[i] != nil {
 			cas[i] = mapping[i].Ca()
 		}
 	}
-	return cas, nil
+	return cas
 }
 
 // SequenceAtoms is just like SequenceCaAtoms, except it returns the residues
@@ -169,7 +160,7 @@ func (m Model) SequenceCaAtoms() ([]*Coords, error) {
 // get a mapping that isn't limited by the presence of alpha-carbon atoms.
 //
 // See SequenceCaAtoms for the deets.
-func (m Model) SequenceAtoms() ([]*Residue, error) {
+func (m Model) SequenceAtoms() []*Residue {
 	if len(m.Chain.Missing) > 0 {
 		return m.seqAtomsChunksMerge()
 	}

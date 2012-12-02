@@ -60,11 +60,11 @@ func getAbbrev(abbrev string) (seq.Residue, error) {
 	typ := getAbbrevType(abbrev)
 	switch typ {
 	case SeqProtein:
-		return getAmino(abbrev)
+		return getAmino(abbrev), nil
 	case SeqDeoxy:
-		return getDeoxy(abbrev)
+		return getDeoxy(abbrev), nil
 	case SeqRibo:
-		return getRibo(abbrev)
+		return getRibo(abbrev), nil
 	}
 	panic(fmt.Sprintf("Unknown sequence type: %d", typ))
 }
@@ -82,23 +82,23 @@ func getAbbrevType(abbrev string) SequenceType {
 		abbrev, len(abbrev)))
 }
 
-func getAmino(threeAbbrev string) (seq.Residue, error) {
+func getAmino(threeAbbrev string) seq.Residue {
 	if v, ok := aminoMap[threeAbbrev]; ok {
-		return v, nil
+		return v
 	}
-	return 'X', fmt.Errorf("Unknown amino residue: %s", threeAbbrev)
+	return 'X'
 }
 
-func getDeoxy(twoAbbrev string) (seq.Residue, error) {
+func getDeoxy(twoAbbrev string) seq.Residue {
 	if v, ok := deoxyMap[twoAbbrev]; ok {
-		return v, nil
+		return v
 	}
-	return 'X', fmt.Errorf("Unknown deoxy residue: %s", twoAbbrev)
+	return 'X'
 }
 
-func getRibo(oneAbbrev string) (seq.Residue, error) {
+func getRibo(oneAbbrev string) seq.Residue {
 	if v, ok := riboMap[oneAbbrev]; ok {
-		return v, nil
+		return v
 	}
-	return 'X', fmt.Errorf("Unknown ribo residue: %s", oneAbbrev)
+	return 'X'
 }
