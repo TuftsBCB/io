@@ -42,10 +42,12 @@ func ReadPDB(fp string) (*Entry, error) {
 	var reader io.Reader
 	var err error
 
-	reader, err = os.Open(fp)
+	f, err := os.Open(fp)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
+	reader = f
 
 	// If the file is gzipped, use the gzip decompressor.
 	if path.Ext(fp) == ".gz" {
