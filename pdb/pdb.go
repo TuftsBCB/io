@@ -57,8 +57,12 @@ func ReadPDB(fp string) (*Entry, error) {
 		}
 	}
 
+	return Read(reader, fp)
+}
+
+func Read(reader io.Reader, fpath string) (*Entry, error) {
 	entry := &Entry{
-		Path:   fp,
+		Path:   fpath,
 		Chains: make([]*Chain, 0),
 	}
 
