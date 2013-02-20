@@ -69,8 +69,10 @@ func (entry *Entry) OneChain() *Chain {
 }
 
 // IsProtein returns true if the chain consists of amino acids.
+//
+// IsProtein also returns true if there are no SEQRES records.
 func (c Chain) IsProtein() bool {
-	return c.SeqType == SeqProtein && len(c.Models) > 0
+	return c.SeqType == -1 || (c.SeqType == SeqProtein && len(c.Models) > 0)
 }
 
 // SequenceCaAtomSlice attempts to extract a contiguous slice of alpha-carbon

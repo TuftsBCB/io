@@ -144,6 +144,8 @@ func Read(reader io.Reader, fpath string) (*Entry, error) {
 		switch {
 		case len(name) >= 7 && name[0:3] == "pdb":
 			entry.IdCode = name[3:7]
+		case len(name) >= 6: // SCOP
+			entry.IdCode = name[1:5]
 		case len(name) == 7: // cath
 			entry.IdCode = name[0:4]
 		}
@@ -194,7 +196,9 @@ func (p *pdbParser) parseLine() error {
 	case "REMARK":
 		num, err := p.atoi(8, 10)
 		if err != nil {
-			return err
+			// Some people like to put in their own remarks and not conform
+			// to the SPEC. Why............
+			return nil
 		}
 		switch num {
 		case 465:
