@@ -10,6 +10,13 @@ type Entry struct {
 	Path   string
 	IdCode string
 	Chains []*Chain
+
+	// SCOP is set whenever we see an identifier that looks like a
+	// SCOP id. We use this to determine how to satisfy the Bower interface,
+	// so that each entry has a unique ID.
+	// Similarly for CATH.
+	scop string
+	cath string
 }
 
 type Chain struct {

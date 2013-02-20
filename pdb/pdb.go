@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/BurntSushi/bcbgo/seq"
 )
@@ -145,13 +146,23 @@ func Read(reader io.Reader, fpath string) (*Entry, error) {
 		case len(name) >= 7 && name[0:3] == "pdb":
 			entry.IdCode = name[3:7]
 		case len(name) >= 6: // SCOP
+			entry.scop = stripExt(name)
 			entry.IdCode = name[1:5]
 		case len(name) == 7: // cath
+			entry.cath = stripExt(name)
 			entry.IdCode = name[0:4]
 		}
 	}
 
 	return entry, nil
+}
+
+func stripExt(s string) string {
+	i := strings.Index(s, ".")
+	if i == -1 {
+		return s
+	}
+	return s[0:i]
 }
 
 func (p *pdbParser) parseLine() error {

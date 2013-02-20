@@ -18,6 +18,12 @@ func (e *Entry) AtomChunks() [][]Coords {
 }
 
 func (chain *Chain) IdString() string {
+	switch {
+	case len(chain.Entry.scop) > 0:
+		return chain.Entry.scop
+	case len(chain.Entry.cath) > 0:
+		return chain.Entry.cath
+	}
 	return fmt.Sprintf("%s%c", strings.ToLower(chain.Entry.IdCode), chain.Ident)
 }
 
