@@ -5,11 +5,15 @@ import (
 	"strings"
 )
 
-func (e *Entry) IdString() string {
+func (e *Entry) Id() string {
 	return strings.ToLower(e.IdCode)
 }
 
-func (e *Entry) AtomChunks() [][]Coords {
+func (e *Entry) Data() string {
+	return ""
+}
+
+func (e *Entry) Atoms() [][]Coords {
 	chunks := make([][]Coords, len(e.Chains))
 	for i, chain := range e.Chains {
 		chunks[i] = chain.CaAtoms()
@@ -17,7 +21,7 @@ func (e *Entry) AtomChunks() [][]Coords {
 	return chunks
 }
 
-func (chain *Chain) IdString() string {
+func (chain *Chain) Id() string {
 	switch {
 	case len(chain.Entry.scop) > 0:
 		return chain.Entry.scop
@@ -27,6 +31,10 @@ func (chain *Chain) IdString() string {
 	return fmt.Sprintf("%s%c", strings.ToLower(chain.Entry.IdCode), chain.Ident)
 }
 
-func (chain *Chain) AtomChunks() [][]Coords {
+func (chain *Chain) Data() string {
+	return ""
+}
+
+func (chain *Chain) Atoms() [][]Coords {
 	return [][]Coords{chain.CaAtoms()}
 }
