@@ -115,6 +115,13 @@ func (c Chain) CaAtoms() []Coords {
 	return c.Models[0].CaAtoms()
 }
 
+// AsSequence returns the chain as a sequence with an appropriate name.
+// (e.g., 1tcfA)
+func (c *Chain) AsSequence() seq.Sequence {
+	name := fmt.Sprintf("%s%c", c.Entry.IdCode, c.Ident)
+	return seq.Sequence{name, c.Sequence}
+}
+
 // SequenceCaAtomSlice attempts to extract a contiguous slice of alpha-carbon
 // ATOM records based on *residue* index. Namely, if a contiguous slice cannot
 // be found, nil is returned.
