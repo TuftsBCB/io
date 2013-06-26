@@ -20,6 +20,19 @@ func SequenceFasta(s seq.Sequence, cols int) string {
 		return fmt.Sprintf(">%s\n%s", s.Name, s.Residues)
 	}
 
+	wrapped := SequenceString(s, cols)
+	return fmt.Sprintf(">%s\n%s", s.Name, strings.Join(wrapped, "\n"))
+}
+
+// SequenceStrings chops up one long sequence into multiple strings
+// based on the number of columns provided.
+//
+// cols must be greater than 0.
+func SequenceString(s seq.Sequence, cols int) []string {
+	if cols <= 0 {
+		panic("cols must be greater than 0")
+	}
+
 	wrapped := make([]string, 1+((len(s.Residues)-1)/cols))
 	for i := range wrapped {
 		start := cols * i
@@ -29,7 +42,7 @@ func SequenceFasta(s seq.Sequence, cols int) string {
 		}
 		wrapped[i] = fmt.Sprintf("%s", s.Residues[start:end])
 	}
-	return fmt.Sprintf(">%s\n%s", s.Name, strings.Join(wrapped, "\n"))
+	return wrapped
 }
 
 // A Reader reads entries from FASTA encoded input.
@@ -200,7 +213,7 @@ func (r *Reader) ReadSequence(translate Translator) (seq.Sequence, error) {
 
 				// If the zero byte is returned from translate, then we
 				// don't keep this residue around.
-				if b > 0 {
+				if bNew > 0 {
 					s.Residues = append(s.Residues, bNew)
 				}
 			}
