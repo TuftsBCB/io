@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/bcbgo/io/fasta"
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/io/fasta"
+	"github.com/TuftsBCB/seq"
 )
 
 func Read(r io.Reader) (*HHM, error) {

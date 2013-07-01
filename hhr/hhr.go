@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 var _ = log.Println

@@ -3,7 +3,7 @@ package pdb
 import (
 	"fmt"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 type Entry struct {

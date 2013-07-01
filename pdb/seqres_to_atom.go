@@ -3,7 +3,7 @@ package pdb
 import (
 	"unicode"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 func (m Model) seqAtomsGuess() []*Residue {

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/BurntSushi/bcbgo/io/fasta"
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/io/fasta"
+	"github.com/TuftsBCB/seq"
 )
 
 var flagPdbDir = ""

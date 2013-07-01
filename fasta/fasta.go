@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 // SequenceFasta returns the FASTA string corresponding to a sequence with the

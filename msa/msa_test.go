@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 func TestFasta(t *testing.T) {

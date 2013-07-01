@@ -1,7 +1,7 @@
 package hhm
 
 import (
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 var hmmScale = 1000.0

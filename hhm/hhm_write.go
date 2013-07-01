@@ -6,9 +6,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/BurntSushi/bcbgo/io/fasta"
-	"github.com/BurntSushi/bcbgo/io/msa"
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/io/fasta"
+	"github.com/TuftsBCB/io/msa"
+	"github.com/TuftsBCB/seq"
 )
 
 func Write(w io.Writer, hhm *HHM) error {

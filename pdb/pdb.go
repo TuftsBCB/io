@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 type pdbParser struct {

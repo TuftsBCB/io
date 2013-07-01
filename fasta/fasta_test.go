@@ -10,7 +10,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/seq"
 )
 
 var (

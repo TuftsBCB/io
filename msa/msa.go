@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/BurntSushi/bcbgo/io/fasta"
-	"github.com/BurntSushi/bcbgo/seq"
+	"github.com/TuftsBCB/io/fasta"
+	"github.com/TuftsBCB/seq"
 )
 
 func translateA2M(b byte) (seq.Residue, bool) {
