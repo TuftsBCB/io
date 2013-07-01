@@ -16,10 +16,6 @@ import (
 //
 // If cols is <= 0, then no wrapping is done.
 func SequenceFasta(s seq.Sequence, cols int) string {
-	if cols <= 0 {
-		return fmt.Sprintf(">%s\n%s", s.Name, s.Residues)
-	}
-
 	wrapped := SequenceString(s, cols)
 	return fmt.Sprintf(">%s\n%s", s.Name, strings.Join(wrapped, "\n"))
 }
@@ -27,10 +23,10 @@ func SequenceFasta(s seq.Sequence, cols int) string {
 // SequenceStrings chops up one long sequence into multiple strings
 // based on the number of columns provided.
 //
-// cols must be greater than 0.
+// If cols is <= 0, then no wrapping is done and a single string is returned.
 func SequenceString(s seq.Sequence, cols int) []string {
 	if cols <= 0 {
-		panic("cols must be greater than 0")
+		return []string{fmt.Sprintf("%s", s.Residues)}
 	}
 
 	wrapped := make([]string, 1+((len(s.Residues)-1)/cols))
@@ -293,7 +289,11 @@ func (w *Writer) Flush() error {
 func (w *Writer) Write(s seq.Sequence) error {
 	var out string
 	if w.Asterisk {
-		out = fmt.Sprintf("%s*\n", SequenceFasta(s, w.Columns))
+		if w.Columns > 0 && s.Len()%w.Columns == 0 {
+			out = fmt.Sprintf("%s\n*\n", SequenceFasta(s, w.Columns))
+		} else {
+			out = fmt.Sprintf("%s*\n", SequenceFasta(s, w.Columns))
+		}
 	} else {
 		out = fmt.Sprintf("%s\n", SequenceFasta(s, w.Columns))
 	}
