@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/TuftsBCB/seq"
+	"github.com/TuftsBCB/structure"
 )
 
 type pdbParser struct {
@@ -275,7 +276,7 @@ func (p *pdbParser) parseAtom() error {
 	atom := Atom{
 		Name:   p.cols(13, 16),
 		Het:    p.cols(1, 6) == "HETATM",
-		Coords: Coords{},
+		Coords: structure.Coords{},
 	}
 
 	atom.X, err = p.atof(31, 38)

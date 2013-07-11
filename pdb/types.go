@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/TuftsBCB/seq"
+	"github.com/TuftsBCB/structure"
 )
 
 type Entry struct {
@@ -45,11 +46,7 @@ type Residue struct {
 type Atom struct {
 	Name string
 	Het  bool
-	Coords
-}
-
-type Coords struct {
-	X, Y, Z float64
+	structure.Coords
 }
 
 // Chain returns a chain with the given identifier.
@@ -86,7 +83,7 @@ func (c Chain) IsProtein() bool {
 // ATOM records based on *residue* index. Namely, if a contiguous slice cannot
 // be found, nil is returned. If there is more than one model, the first model
 // is used.
-func (c Chain) SequenceCaAtomSlice(start, end int) []Coords {
+func (c Chain) SequenceCaAtomSlice(start, end int) []structure.Coords {
 	return c.Models[0].SequenceCaAtomSlice(start, end)
 }
 
@@ -95,7 +92,7 @@ func (c Chain) SequenceCaAtomSlice(start, end int) []Coords {
 // model).
 //
 // See Model.SequenceCaAtoms for the deets.
-func (c Chain) SequenceCaAtoms() []*Coords {
+func (c Chain) SequenceCaAtoms() []*structure.Coords {
 	return c.Models[0].SequenceCaAtoms()
 }
 
@@ -111,7 +108,7 @@ func (c Chain) SequenceAtoms() []*Residue {
 
 // CaAtoms returns all alpha-carbon atoms in the chain. If there is more than
 // one model, only the first model is used.
-func (c Chain) CaAtoms() []Coords {
+func (c Chain) CaAtoms() []structure.Coords {
 	return c.Models[0].CaAtoms()
 }
 
@@ -125,9 +122,9 @@ func (c *Chain) AsSequence() seq.Sequence {
 // SequenceCaAtomSlice attempts to extract a contiguous slice of alpha-carbon
 // ATOM records based on *residue* index. Namely, if a contiguous slice cannot
 // be found, nil is returned.
-func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
+func (m Model) SequenceCaAtomSlice(start, end int) []structure.Coords {
 	residues := m.SequenceCaAtoms()
-	atoms := make([]Coords, end-start)
+	atoms := make([]structure.Coords, end-start)
 	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
 		if residues[cai] == nil {
 			return nil
@@ -160,9 +157,9 @@ func (m Model) SequenceCaAtomSlice(start, end int) []Coords {
 //
 // In sum, a list of atom pointers is returned with length equal to the number
 // of residues in the SEQRES record for this model. Some pointers may be nil.
-func (m Model) SequenceCaAtoms() []*Coords {
+func (m Model) SequenceCaAtoms() []*structure.Coords {
 	mapping := m.SequenceAtoms()
-	cas := make([]*Coords, len(mapping))
+	cas := make([]*structure.Coords, len(mapping))
 	for i := range mapping {
 		if mapping[i] != nil {
 			cas[i] = mapping[i].Ca()
@@ -186,8 +183,8 @@ func (m Model) SequenceAtoms() []*Residue {
 // CaAtoms returns all alpha-carbon atoms in the model.
 // This includes multiple alpha-carbon atoms belonging to the same residue.
 // It does not include HETATMs.
-func (m Model) CaAtoms() []Coords {
-	cas := make([]Coords, 0, len(m.Residues))
+func (m Model) CaAtoms() []structure.Coords {
+	cas := make([]structure.Coords, 0, len(m.Residues))
 	for _, r := range m.Residues {
 		for _, atom := range r.Atoms {
 			if atom.Name == "CA" && !atom.Het {
@@ -200,15 +197,11 @@ func (m Model) CaAtoms() []Coords {
 
 // Ca returns the alpha-carbon atom in this residue.
 // If one does not exist, nil is returned.
-func (r Residue) Ca() *Coords {
+func (r Residue) Ca() *structure.Coords {
 	for _, atom := range r.Atoms {
 		if atom.Name == "CA" {
 			return &atom.Coords
 		}
 	}
 	return nil
-}
-
-func (coords Coords) String() string {
-	return fmt.Sprintf("%0.3f %0.3f %0.3f", coords.X, coords.Y, coords.Z)
 }

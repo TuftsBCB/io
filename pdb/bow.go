@@ -3,6 +3,8 @@ package pdb
 import (
 	"fmt"
 	"strings"
+
+	"github.com/TuftsBCB/structure"
 )
 
 func (e *Entry) Id() string {
@@ -13,8 +15,8 @@ func (e *Entry) Data() string {
 	return ""
 }
 
-func (e *Entry) Atoms() [][]Coords {
-	chunks := make([][]Coords, len(e.Chains))
+func (e *Entry) Atoms() [][]structure.Coords {
+	chunks := make([][]structure.Coords, len(e.Chains))
 	for i, chain := range e.Chains {
 		chunks[i] = chain.CaAtoms()
 	}
@@ -35,6 +37,6 @@ func (chain *Chain) Data() string {
 	return ""
 }
 
-func (chain *Chain) Atoms() [][]Coords {
-	return [][]Coords{chain.CaAtoms()}
+func (chain *Chain) Atoms() [][]structure.Coords {
+	return [][]structure.Coords{chain.CaAtoms()}
 }
