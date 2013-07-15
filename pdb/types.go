@@ -16,8 +16,8 @@ type Entry struct {
 	// SCOP id. We use this to determine how to satisfy the Bower interface,
 	// so that each entry has a unique ID.
 	// Similarly for CATH.
-	scop string
-	cath string
+	Scop string
+	Cath string
 }
 
 type Chain struct {

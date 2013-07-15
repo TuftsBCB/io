@@ -147,10 +147,10 @@ func Read(reader io.Reader, fpath string) (*Entry, error) {
 		case len(name) >= 7 && name[0:3] == "pdb":
 			entry.IdCode = name[3:7]
 		case len(name) >= 6: // SCOP
-			entry.scop = stripExt(name)
+			entry.Scop = stripExt(name)
 			entry.IdCode = name[1:5]
 		case len(name) == 7: // cath
-			entry.cath = stripExt(name)
+			entry.Cath = stripExt(name)
 			entry.IdCode = name[0:4]
 		}
 	}
