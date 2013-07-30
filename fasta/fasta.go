@@ -165,6 +165,15 @@ func (r *Reader) ReadSequence(translate Translator) (seq.Sequence, error) {
 			continue
 		}
 
+		// If the line starts with PIR junk, ignore the line.
+		if bytes.HasPrefix(line, []byte("C;")) ||
+			bytes.HasPrefix(line, []byte("structure")) ||
+			bytes.HasPrefix(line, []byte("sequence")) {
+
+			r.line++
+			continue
+		}
+
 		// If we haven't seen the header yet, this better be it.
 		if !seenHeader {
 			if line[0] != '>' {
@@ -239,6 +248,8 @@ func TranslateNormal(b byte) (seq.Residue, bool) {
 	case b == '*':
 		return 0, true
 	case b == '-':
+		return '-', true
+	case b == '/': // PIR junk. Chain breaks? WTF?
 		return '-', true
 	}
 	return 0, false

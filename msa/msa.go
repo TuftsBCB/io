@@ -20,6 +20,8 @@ func translateA2M(b byte) (seq.Residue, bool) {
 		return '-', true
 	case b == '.':
 		return '.', true
+	case b == '/': // PIR junk. Chain breaks? WTF?
+		return '-', true
 	}
 	return 0, false
 }
