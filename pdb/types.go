@@ -124,6 +124,11 @@ func (c *Chain) AsSequence() seq.Sequence {
 // be found, nil is returned.
 func (m Model) SequenceCaAtomSlice(start, end int) []structure.Coords {
 	residues := m.SequenceCaAtoms()
+	if start < 0 || start >= end || end > len(residues) {
+		panic(fmt.Sprintf(
+			"Invalid range [%d, %d). Must be in [%d, %d).",
+			start, end, 0, len(residues)))
+	}
 	atoms := make([]structure.Coords, end-start)
 	for i, cai := 0, start; cai < end; i, cai = i+1, cai+1 {
 		if residues[cai] == nil {
