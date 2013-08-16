@@ -11,6 +11,33 @@ import (
 	"github.com/TuftsBCB/seq"
 )
 
+// QuickSequenceCount consumes the given reader and returns the number of
+// times ">" appears at the start of a line.
+func QuickSequenceCount(r io.Reader) (int, error) {
+	buf := make([]byte, 4096)
+	count := 0
+	lastNewLine := true // Fake it for the beginning of the file.
+	for {
+		n, err := r.Read(buf)
+		if n == 0 && err != nil {
+			if err == io.EOF {
+				break
+			}
+			return 0, err
+		}
+		for i := 0; i < n; i++ {
+			if lastNewLine && buf[i] == '>' {
+				count++
+			} else if buf[i] == '\n' {
+				lastNewLine = true
+			} else {
+				lastNewLine = false
+			}
+		}
+	}
+	return count, nil
+}
+
 // SequenceFasta returns the FASTA string corresponding to a sequence with the
 // sequence wrapped at the number of columns given.
 //
