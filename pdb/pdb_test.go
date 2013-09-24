@@ -136,8 +136,7 @@ func TestManyReadPDB(t *testing.T) {
 
 func ExampleSeqresCas() {
 	entry := readPDB()
-	cas, err := entry.Chains[0].SequenceCaAtoms()
-	assert(err)
+	cas := entry.Chains[0].SequenceCaAtoms()
 	if ca := cas[12]; ca != nil {
 		fmt.Println(ca)
 	}
@@ -189,12 +188,7 @@ func testDisordered(t *testing.T,
 	}
 	answer := answerSeq.Residues
 
-	mapping, err := chain.SequenceAtoms()
-	if err != nil {
-		log.Printf("%s\n", err)
-		return
-	}
-
+	mapping := chain.SequenceAtoms()
 	guess := make([]seq.Residue, len(mapping))
 	for i, residue := range mapping {
 		if residue == nil {
