@@ -35,7 +35,7 @@ func (m Model) seqAtomsAlign() []*Residue {
 	for i, r := range m.Residues {
 		atomResidues[i] = r.Name
 	}
-	aligned := seq.NeedlemanWunsch(seqres, atomResidues)
+	aligned := seq.NeedlemanWunsch(seqres, atomResidues, seq.MatBlosum62)
 
 	mapped := make([]*Residue, len(seqres))
 	atomi := 0
