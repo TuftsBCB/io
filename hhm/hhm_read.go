@@ -263,7 +263,6 @@ func readHMM(buf *bytes.Buffer) (hmm *seq.HMM, err error) {
 			fields1 := strings.Fields(string(line))
 			fields2 := strings.Fields(string(line2))
 			node := seq.HMMNode{
-				HMM:     hmm,
 				Residue: seq.Residue(fields1[0][0]),
 			}
 
