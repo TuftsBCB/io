@@ -17,7 +17,6 @@ const (
 	itemDescendentsStart
 	itemDescendentsEnd
 	itemSubtree
-	itemLength
 )
 
 const (
@@ -231,7 +230,7 @@ func lexLabel(lx *lexer) stateFn {
 	} else if isSubtreeEnd(r) {
 		lx.backup()
 		return lexSubtreeEnd
-	} else if strings.ContainsRune(unquoteBanned, r) {
+	} else if strings.ContainsRune(unquoteBanned, r) || isNL(r) {
 		return lx.errorf("Found '%s' in an unquoted label, which may not "+
 			"contain the following characters: '%s'.", r, unquoteBanned)
 	}
@@ -311,8 +310,6 @@ func (itype itemType) String() string {
 		return "Descendents (end)"
 	case itemSubtree:
 		return "Subtree"
-	case itemLength:
-		return "Length"
 	}
 	panic(fmt.Sprintf("BUG: Unknown type '%s'.", itype))
 }
