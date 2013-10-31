@@ -141,7 +141,7 @@ func Read(reader io.Reader, fpath string) (*Entry, error) {
 	}
 
 	// If we couldn't find an Id code, inspect the base name of the file path.
-	if len(entry.IdCode) == 0 {
+	if len(entry.IdCode) == 0 || entry.IdCode == "0000" {
 		name := path.Base(entry.Path)
 		switch {
 		case len(name) >= 7 && name[0:3] == "pdb":
