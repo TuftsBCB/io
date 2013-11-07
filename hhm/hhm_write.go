@@ -180,7 +180,7 @@ func writeEmissions(
 
 	probs := make([]string, len(alphabet))
 	for i, residue := range alphabet {
-		probs[i] = probStr(ep[residue])
+		probs[i] = probStr(ep.Lookup(residue))
 	}
 	_, err := buf.WriteString(strings.Join(probs, "\t"))
 	return err

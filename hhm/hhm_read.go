@@ -243,7 +243,7 @@ func readHMM(buf *bytes.Buffer) (hmm *seq.HMM, err error) {
 				return nil, fmt.Errorf("Could not read NULL emissions '%s': %s",
 					strings.Join(nullFields, " "), err)
 			}
-			hmm.Null = ep
+			hmm.Null = *ep
 		default: // finally, reading a node in the HMM
 			// Each node in the HMM is made up of two lines.
 			// The first line starts with the amino acid in the reference
@@ -272,15 +272,16 @@ func readHMM(buf *bytes.Buffer) (hmm *seq.HMM, err error) {
 					fields1[1], err)
 			}
 
-			node.MatEmit, err = readEmissions(hmm.Alphabet, fields1[2:])
+			ep, err := readEmissions(hmm.Alphabet, fields1[2:])
 			if err != nil {
 				return nil, fmt.Errorf("Could not read emissions '%s': %s",
 					strings.Join(fields1[2:], " "), err)
 			}
+			node.MatEmit = *ep
 
 			node.InsEmit = seq.NewEProbs(hmm.Alphabet)
-			for residue := range node.InsEmit {
-				node.InsEmit[residue] = hmm.Null[residue]
+			for _, residue := range hmm.Alphabet {
+				node.InsEmit.Set(residue, hmm.Null.Lookup(residue))
 			}
 
 			node.Transitions, err = readTransitions(fields2)
@@ -301,16 +302,18 @@ func readHMM(buf *bytes.Buffer) (hmm *seq.HMM, err error) {
 	return hmm, nil
 }
 
-func readEmissions(alphabet []seq.Residue, flds []string) (seq.EProbs, error) {
+func readEmissions(alphabet []seq.Residue, flds []string) (*seq.EProbs, error) {
+	var p seq.Prob
 	var err error
 
 	ep := seq.NewEProbs(alphabet)
 	for i := 0; i < len(alphabet); i++ {
-		if ep[alphabet[i]], err = readProb(flds[i]); err != nil {
+		if p, err = readProb(flds[i]); err != nil {
 			return nil, err
 		}
+		ep.Set(alphabet[i], p)
 	}
-	return ep, nil
+	return &ep, nil
 }
 
 func readTransitions(fields []string) (tp seq.TProbs, err error) {
