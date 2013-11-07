@@ -173,7 +173,7 @@ func (p *pdbParser) parseLine() error {
 	case "HEADER":
 		p.entry.IdCode = p.cols(63, 66)
 	case "MODEL":
-		p.curModel, err = p.atoi(11, 14)
+		p.curModel, err = p.atoi("MODEL number [11-14]", 11, 14)
 		if err != nil {
 			return err
 		}
@@ -206,7 +206,7 @@ func (p *pdbParser) parseLine() error {
 		// fmt.Printf("%c %d\n", p.lastSeen.chain, p.lastSeen.model)
 		p.processed[p.lastSeen] = true
 	case "REMARK":
-		num, err := p.atoi(8, 10)
+		num, err := p.atoi("REMARK identifier [8-10]", 8, 10)
 		if err != nil {
 			// Some people like to put in their own remarks and not conform
 			// to the SPEC. Why............
@@ -261,7 +261,7 @@ func (p *pdbParser) parseAtom() error {
 		insCode = 0
 	}
 
-	seqNum, err := p.atoi(23, 26)
+	seqNum, err := p.atoi("ATOM sequence number [23-26]", 23, 26)
 	if err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func (p *pdbParser) parseRemark465() error {
 
 	chainIdent := p.at(20)
 
-	seqNum, err := p.atoi(22, 26)
+	seqNum, err := p.atoi("REMARK 465 sequence number [22-26]", 22, 26)
 	if err != nil {
 		return err
 	}
@@ -394,8 +394,12 @@ func (p pdbParser) getResidue(ident byte,
 	return residue, nil
 }
 
-func (p pdbParser) atoi(start, end int) (int, error) {
-	return strconv.Atoi(p.cols(start, end))
+func (p pdbParser) atoi(where string, start, end int) (int, error) {
+	n, err := strconv.Atoi(p.cols(start, end))
+	if err != nil {
+		return 0, fmt.Errorf("Error in %s: %s", where, err)
+	}
+	return n, nil
 }
 
 func (p pdbParser) atof(start, end int) (float64, error) {
@@ -407,8 +411,11 @@ func (p pdbParser) cols(start, end int) string {
 	if rs >= len(p.line) || rs < 0 {
 		return ""
 	}
-	if re > len(p.line) || re < 0 || re < rs {
+	if re < 0 || re < rs {
 		return ""
+	}
+	if re > len(p.line) {
+		re = len(p.line)
 	}
 	return string(bytes.TrimSpace(p.line[rs:re]))
 }
