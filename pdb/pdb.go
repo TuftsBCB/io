@@ -395,9 +395,10 @@ func (p pdbParser) getResidue(ident byte,
 }
 
 func (p pdbParser) atoi(where string, start, end int) (int, error) {
-	n, err := strconv.Atoi(p.cols(start, end))
+	try := p.cols(start, end)
+	n, err := strconv.Atoi(try)
 	if err != nil {
-		return 0, fmt.Errorf("Error in %s: %s", where, err)
+		return 0, fmt.Errorf("Error in %s: %s (tried '%s')", where, err, try)
 	}
 	return n, nil
 }
