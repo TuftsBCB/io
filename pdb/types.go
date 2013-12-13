@@ -167,7 +167,9 @@ func (m Model) SequenceCaAtoms() []*structure.Coords {
 	cas := make([]*structure.Coords, len(mapping))
 	for i := range mapping {
 		if mapping[i] != nil {
-			cas[i] = mapping[i].Ca()
+			if coords, ok := mapping[i].Ca(); ok {
+				cas[i] = &coords
+			}
 		}
 	}
 	return cas
@@ -202,11 +204,11 @@ func (m Model) CaAtoms() []structure.Coords {
 
 // Ca returns the alpha-carbon atom in this residue.
 // If one does not exist, nil is returned.
-func (r Residue) Ca() *structure.Coords {
+func (r Residue) Ca() (structure.Coords, bool) {
 	for _, atom := range r.Atoms {
 		if atom.Name == "CA" {
-			return &atom.Coords
+			return atom.Coords, true
 		}
 	}
-	return nil
+	return structure.Coords{}, false
 }
