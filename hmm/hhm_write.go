@@ -1,4 +1,4 @@
-package hhm
+package hmm
 
 import (
 	"bufio"
@@ -11,9 +11,11 @@ import (
 	"github.com/TuftsBCB/seq"
 )
 
-func Write(w io.Writer, hhm *HHM) error {
+// WriteHHM writes an hmm file that can be read by HHsuite programs (i.e.,
+// hhblits, hhsearch, etc).
+func WriteHHM(w io.Writer, hhm *HHM) error {
 	buf := bufio.NewWriter(w)
-	if err := writeMeta(buf, hhm); err != nil {
+	if err := writeMeta(buf, hhm.Meta, hhm.HMM); err != nil {
 		return err
 	}
 	if _, err := buf.WriteString("SEQ\n"); err != nil {
@@ -28,7 +30,7 @@ func Write(w io.Writer, hhm *HHM) error {
 	if _, err := buf.WriteString("#\n"); err != nil {
 		return err
 	}
-	if err := writeHMM(buf, hhm); err != nil {
+	if err := writeHMM(buf, hhm.HMM); err != nil {
 		return err
 	}
 	if _, err := buf.WriteString("//\n"); err != nil {
@@ -37,7 +39,7 @@ func Write(w io.Writer, hhm *HHM) error {
 	return buf.Flush()
 }
 
-func writeMeta(buf *bufio.Writer, hhm *HHM) (err error) {
+func writeMeta(buf *bufio.Writer, meta Meta, hmm *seq.HMM) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			var ok bool
@@ -54,7 +56,6 @@ func writeMeta(buf *bufio.Writer, hhm *HHM) (err error) {
 		}
 	}
 
-	meta := hhm.Meta
 	if len(meta.FormatVersion) > 0 {
 		w("%s", meta.FormatVersion)
 	}
@@ -75,7 +76,7 @@ func writeMeta(buf *bufio.Writer, hhm *HHM) (err error) {
 	}
 	if len(meta.Leng) > 0 {
 		// Not sure if this is right. ???
-		m := len(hhm.HMM.Nodes)
+		m := len(hmm.Nodes)
 		w("LENG  %d match states, %d columns in multiple alignment", m, m)
 	}
 	if len(meta.Filt) > 0 {
@@ -124,7 +125,7 @@ func writeMSA(buf *bufio.Writer, hhm *HHM) error {
 	return msa.WriteA3M(buf, hhm.MSA)
 }
 
-func writeHMM(buf *bufio.Writer, hhm *HHM) (err error) {
+func writeHMM(buf *bufio.Writer, hmm *seq.HMM) (err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			var ok bool
@@ -141,7 +142,6 @@ func writeHMM(buf *bufio.Writer, hhm *HHM) (err error) {
 		}
 	}
 
-	hmm := hhm.HMM
 	w("NULL   ")
 	must(writeEmissions(buf, hmm.Alphabet, hmm.Null))
 	w("\n")

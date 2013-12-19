@@ -1,4 +1,4 @@
-package hhm
+package hmm
 
 import (
 	"github.com/TuftsBCB/seq"
@@ -6,14 +6,21 @@ import (
 
 var hmmScale = 1000.0
 
+// HMM corresponds to an hmm file produced by HMMER.
+type HMM struct {
+	Meta Meta
+	HMM  *seq.HMM
+}
+
+// HHM corresponds to an hhm file produce by HHsuite (i.e., hhblits or hhmake).
 type HHM struct {
-	Meta      HHMMeta
+	Meta      Meta
 	Secondary HHMSecondary
 	MSA       seq.MSA
 	HMM       *seq.HMM
 }
 
-type HHMMeta struct {
+type Meta struct {
 	// Corresponds to the HHsearch version for which this format was
 	// first introduced.
 	FormatVersion string

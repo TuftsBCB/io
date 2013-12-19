@@ -1,4 +1,4 @@
-package hhm
+package hmm
 
 import (
 	"bufio"
@@ -12,7 +12,7 @@ import (
 	"github.com/TuftsBCB/seq"
 )
 
-func Read(r io.Reader) (*HHM, error) {
+func ReadHHM(r io.Reader) (*HHM, error) {
 	// An hhm file as four logical sections: 1) Meta data, 2) secondary
 	// structure info (optional), 3) A2M formatted MSA and 4) the HMM.
 	// We group 2+3 together, and store each of the three portions in their
@@ -86,15 +86,15 @@ MAIN:
 	}, nil
 }
 
-func readMeta(buf *bytes.Buffer) (HHMMeta, error) {
-	meta := HHMMeta{}
+func readMeta(buf *bytes.Buffer) (Meta, error) {
+	meta := Meta{}
 	for {
 		line, err := buf.ReadBytes('\n')
 		if err == io.EOF && len(line) == 0 {
 			break
 		}
 		if err != nil && err != io.EOF {
-			return HHMMeta{}, err
+			return Meta{}, err
 		}
 
 		line = trim(line)
@@ -116,25 +116,25 @@ func readMeta(buf *bytes.Buffer) (HHMMeta, error) {
 			// format store all Neff values equally? NOOOOOOOOOOOOOOOOOOOO.
 			f, err := strconv.ParseFloat(str(line[4:]), 64)
 			if err != nil {
-				return HHMMeta{}, err
+				return Meta{}, err
 			}
 			meta.Neff = seq.Prob(f)
 		case hasPrefix(line, "EVD"):
 			fields := bytes.Fields(bytes.TrimSpace(line[3:]))
 			if len(fields) != 2 {
-				return HHMMeta{}, fmt.Errorf("Invalid EVD format: '%s'", line)
+				return Meta{}, fmt.Errorf("Invalid EVD format: '%s'", line)
 			}
 
 			lambda, err := strconv.ParseFloat(string(fields[0]), 64)
 			if err != nil {
-				return HHMMeta{}, fmt.Errorf("Error EVD lambda '%s': %s",
+				return Meta{}, fmt.Errorf("Error EVD lambda '%s': %s",
 					string(fields[0]), err)
 			}
 			meta.EvdLambda = lambda
 
 			mu, err := strconv.ParseFloat(string(fields[1]), 64)
 			if err != nil {
-				return HHMMeta{}, fmt.Errorf("Error EVD mu '%s': %s",
+				return Meta{}, fmt.Errorf("Error EVD mu '%s': %s",
 					string(fields[1]), err)
 			}
 			meta.EvdMu = mu

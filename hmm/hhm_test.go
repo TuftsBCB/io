@@ -1,4 +1,4 @@
-package hhm
+package hmm
 
 import (
 	"flag"
@@ -40,11 +40,11 @@ func TestSlice(t *testing.T) {
 		log.Fatalf("%s", err)
 	}
 
-	hhm, err := Read(r)
+	hhm, err := ReadHHM(r)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
-	if err := Write(w, hhm.Slice(s, e)); err != nil {
+	if err := WriteHHM(w, hhm.Slice(s, e)); err != nil {
 		t.Fatalf("%s", err)
 	}
 }
@@ -52,12 +52,12 @@ func TestSlice(t *testing.T) {
 func TestReadWrite(t *testing.T) {
 	r, w := getFiles()
 
-	hhm, err := Read(r)
+	hhm, err := ReadHHM(r)
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
 
-	if err := Write(w, hhm); err != nil {
+	if err := WriteHHM(w, hhm); err != nil {
 		t.Fatalf("%s", err)
 	}
 }
@@ -66,12 +66,12 @@ func BenchmarkReadWrite(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r, w := getFiles()
 
-		hhm, err := Read(r)
+		hhm, err := ReadHHM(r)
 		if err != nil {
 			log.Fatalf("%s", err)
 		}
 
-		if err := Write(w, hhm); err != nil {
+		if err := WriteHHM(w, hhm); err != nil {
 			log.Fatalf("%s", err)
 		}
 	}

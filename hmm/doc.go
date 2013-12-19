@@ -8,4 +8,4 @@ information from DSSP and/or PSIPED. 3) A multiple sequence alignment in A3M
 format. 4) The HMM formatted similarly to HMMER's hmm files, but without pseudo
 counts.
 */
-package hhm
+package hmm
