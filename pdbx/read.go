@@ -1,5 +1,7 @@
 package pdbx
 
+// Look at 1cg7.
+
 import (
 	"github.com/TuftsBCB/seq"
 	"github.com/TuftsBCB/structure"
