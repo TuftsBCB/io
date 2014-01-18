@@ -117,8 +117,9 @@ type Site struct {
 	// (Starting from 0.)
 	SeqIndex int
 
-	// A one-letter code corresponding to the residue for this ATOM record.
-	Residue seq.Residue
+	// The component identifier for this site. (For amino acid sequences,
+	// it is usually the codon.)
+	Comp string
 
 	// The set of atoms (in no particular order) for this site.
 	Atoms []Atom

@@ -163,13 +163,15 @@ func (e *Entry) readAtomSites(b *cif.DataBlock) error {
 	loop := asLoop(b, "atom_site.group_pdb", "atom_site.label_atom_id",
 		"atom_site.label_asym_id", "atom_site.label_entity_id",
 		"atom_site.label_seq_id", "atom_site.cartn_x", "atom_site.cartn_y",
-		"atom_site.cartn_z", "atom_site.pdbx_pdb_model_num")
+		"atom_site.cartn_z", "atom_site.pdbx_pdb_model_num",
+		"atom_site.label_comp_id")
 	groups, atoms := loop[0].Strings(), loop[1].Strings()
 	chainids, eids := loop[2].Strings(), loop[3].Strings()
 	seqids, modelids := loop[4].Ints(), loop[8].Ints()
 	xs, ys, zs := loop[5].Floats(), loop[6].Floats(), loop[7].Floats()
+	comps := loop[9].Strings()
 	if groups == nil || atoms == nil || chainids == nil || eids == nil ||
-		seqids == nil || modelids == nil ||
+		seqids == nil || modelids == nil || comps == nil ||
 		xs == nil || ys == nil || zs == nil {
 		return ef("The given PDBx/mmCIF data has no ATOM/HETATM records.")
 	}
@@ -198,7 +200,7 @@ func (e *Entry) readAtomSites(b *cif.DataBlock) error {
 		if len(curModel.Sites) == 0 || curModel.Sites[sitei].SeqIndex != sid {
 			curModel.Sites = append(curModel.Sites, Site{
 				SeqIndex: sid,
-				Residue:  curEntity.Seq[sid],
+				Comp:     comps[i],
 				Atoms:    make([]Atom, 0, 5),
 			})
 			sitei++
@@ -209,7 +211,7 @@ func (e *Entry) readAtomSites(b *cif.DataBlock) error {
 			Coords: structure.Coords{X: xs[i], Y: ys[i], Z: zs[i]},
 		}
 		curModel.Sites[sitei].Atoms = append(curModel.Sites[sitei].Atoms, atom)
-		if atoms[i] == "CA" {
+		if sid >= 0 && atoms[i] == "CA" {
 			curModel.AlphaCarbons[sid] = &atom.Coords
 		}
 	}
