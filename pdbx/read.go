@@ -188,10 +188,11 @@ func (e *Entry) readAtomSites(b *cif.DataBlock) error {
 		curChain = curEntity.Chains[cid]
 		if mid == len(curChain.Models) {
 			curChain.Models = append(curChain.Models, &Model{
-				Chain:        curChain,
-				Num:          mid + 1,
-				Sites:        make([]Site, 0, 100),
-				AlphaCarbons: make([]*structure.Coords, len(curEntity.Seq)),
+				Chain:           curChain,
+				Num:             mid + 1,
+				Sites:           make([]Site, 0, 100),
+				AlphaCarbonsSeq: make([]*structure.Coords, len(curEntity.Seq)),
+				AlphaCarbons:    make([]structure.Coords, 0, 100),
 			})
 		}
 		curModel = curChain.Models[mid]
@@ -211,8 +212,11 @@ func (e *Entry) readAtomSites(b *cif.DataBlock) error {
 			Coords: structure.Coords{X: xs[i], Y: ys[i], Z: zs[i]},
 		}
 		curModel.Sites[sitei].Atoms = append(curModel.Sites[sitei].Atoms, atom)
-		if sid >= 0 && atoms[i] == "CA" {
-			curModel.AlphaCarbons[sid] = &atom.Coords
+		if atoms[i] == "CA" {
+			if sid >= 0 {
+				curModel.AlphaCarbonsSeq[sid] = &atom.Coords
+			}
+			curModel.AlphaCarbons = append(curModel.AlphaCarbons, atom.Coords)
 		}
 	}
 	return nil

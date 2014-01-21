@@ -41,8 +41,8 @@ func TestRead(t *testing.T) {
 		for _, chain := range ent.Chains {
 			lf("    Chain: %c (models: %d)\n", chain.Id, len(chain.Models))
 			lf("      Atom:    %#v\n", chain.Models[0].Sites[0].Atoms[0])
-			if len(chain.Models[0].AlphaCarbons) >= 14 {
-				lf("      SeqAtom: %#v\n", chain.Models[0].AlphaCarbons[13])
+			if len(chain.Models[0].AlphaCarbonsSeq) >= 14 {
+				lf("      SeqAtom: %#v\n", chain.Models[0].AlphaCarbonsSeq[13])
 			}
 		}
 		lf("\n")

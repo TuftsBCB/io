@@ -107,7 +107,13 @@ type Model struct {
 	// not omitted from the set of atoms in each value in Sites.)
 	//
 	// Finally, this slice omits HETATM records.
-	AlphaCarbons []*structure.Coords
+	AlphaCarbonsSeq []*structure.Coords
+
+	// This is the same as AlphaCarbonsSeq, except it is not in correspondence
+	// with the sequence for this chain. In particular, it is constructed by
+	// simply appending the coordinates from the first alpha-carbon ATOM record
+	// in each ATOM site.
+	AlphaCarbons []structure.Coords
 }
 
 // Site corresponds to the set of ATOM records for a particular residue in
